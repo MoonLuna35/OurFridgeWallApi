@@ -1,22 +1,50 @@
 <?php
     
-    class RepeaterBase {
-        protected Event $_event;
+    abstract class AbstractRepeater {
         protected ?Date $_date_end;
-        protected bool $_for_ever; 
+        protected ?bool $_for_ever; 
         
-		public function get_event(): Event  {
-			return $this->_event;
+		public function __construct($repeater) {
+			if(is_array($repeater)) {
+				$repeater = json_encode($repeater);
+				$repeater = json_decode($repeater);
+			}
+			if(isset($repeater->date_end)) {
+				$this->_date_end = $repeater->date_end;
+			}
+			else {
+				$this->_for_ever = true;
+			}
+		}
+
+		protected function controlRepeater($repeater) {
+			if(
+				isset($repeater->date_end)
+				&&
+				!isset($repeater->for_ever)
+			){
+				$repeater->date_end = new Date($repeater->date_end);
+				return $repeater;
+			}
+			else if (
+				!isset($repeater->date_end)
+				&&
+				isset($repeater->for_ever)
+				&&
+				is_bool($repeater->for_ever)
+			) {
+				return $repeater;
+			}
+			else {
+				header('HTTP/1.1 400 Bad Request');
+                exit; 
+			}
 		}
 		public function get_date_end(): Date  {
 			return $this->_date_end;
 		}
         public function get_for_ever(): bool  {
 			return $this->for_ever;
-		}
-        
-        public function set_event(Event $new_event): void  {
-			$this->_event = $new_event;
 		}
 		public function set_date_end(Date $new_date_end): void  {
 			$this->_date_end = $new_date_end;
@@ -34,7 +62,7 @@
         } 
     }
 
-    class RepeaterDaily extends RepeaterBase {
+    class RepeaterDaily extends AbstractRepeater {
         private int $_n_day;
         
         public function get_n_day(): int  {
@@ -44,7 +72,7 @@
 			$this->_n_day = $new_n_day;
 		}
     }
-    class RepeaterWeekly extends RepeaterBase {
+    class RepeaterWeekly extends AbstractRepeater {
         private int $_n_week;
         private bool $_is_repeating_monday;
         private bool $_is_repeating_tuesday;
@@ -104,7 +132,7 @@
 			$this->_is_repeating_sunday = $new_is_repeating_sunday;
 		}
     }
-    class RepeaterMonthly extends RepeaterBase {
+    class RepeaterMonthly extends AbstractRepeater {
         private int $_n_month;
         private array $_days_to_repeat;
         private bool $_is_by_monthDay;
@@ -128,7 +156,7 @@
 			$this->_is_by_monthDay = $new_is_by_monthDay;
 		}
     }
-    class RepeaterYearly extends RepeaterBase {
+    class RepeaterYearly extends AbstractRepeater {
         private int $_n_year;
         private int $_day; 
         private int $_month;
