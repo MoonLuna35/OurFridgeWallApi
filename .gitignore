@@ -1,0 +1,7 @@
+/.env
+/.htaccess
+/CONST.php
+/composer.json
+/composer.lock
+/generate_db_test.php
+/vendor
