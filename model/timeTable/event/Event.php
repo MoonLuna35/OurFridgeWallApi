@@ -1,5 +1,8 @@
 <?php 
+
+    $root = realpath($_SERVER["DOCUMENT_ROOT"]);    
     require_once("../../controlers/global.php");
+    require_once("$root/OurFridgeWall/model/timeTable/repeater/Repeater.php");
 
     abstract class AbstractEvent {
         protected int $_id = -1;
@@ -7,7 +10,7 @@
         protected string $_label;
         protected RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly | null $_repeater = null;
         
-        public function __construct($event, $h=-1) {
+        public function __construct($event, $repeater=null, $h=-1) {
             if(is_array($event)) { //SI l'event est un tableau ALORS
                 $event = json_encode($event); //On je convertie le tableau en objet 
                 $event = json_decode($event);
@@ -22,18 +25,19 @@
             
             $this->_label = $event->label; //On initialise le label
 
-            if(isset($event->repeater)) { //si il se repete ALORS
+            if(isset($repeater)) { //si il se repete ALORS
+                
                 //on defini les classes a instanciees
-                if (isset($event->repeater->n_day)) { //SI jour ALORS
+                if (isset($repeater->n_day)) { //SI jour ALORS
 
                 }
-                else if (isset($event->repeater->n_week)) { //SI semaine ALORS
+                else if (isset($repeater->n_week)) { //SI semaine ALORS
+                    $this->_repeater = new RepeaterWeekly($repeater);
+                }
+                else if (isset($repeater->n_month)) { //SI mois ALORS
 
                 }
-                else if (isset($event->repeater->n_month)) { //SI mois ALORS
-
-                }
-                else if (isset($event->repeater->n_year)) { //SI annee ALORS
+                else if (isset($repeater->n_year)) { //SI annee ALORS
 
                 }
                 //$this->$_repeater
@@ -126,14 +130,14 @@
         private string $_desc; 
         protected string $_place;
         
-        public function __construct($event) { 
+        public function __construct($event, $repeater=null) { 
             if(is_array($event)) {
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
             $event = $this->controlEvent($event);
             
-            parent::__construct($event);
+            parent::__construct($event, $repeater);
 
             $this->_date_end = $event->date_end;
             $this->_desc = $event->desc;
@@ -201,13 +205,13 @@
         private string $_sentance;
         private bool $_is_ring; 
         
-        public function __construct($event) {
+        public function __construct($event, $repeater=null) {
             if(is_array($event)) {
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
             $event = $this->controlEvent($event);
-            parent::__construct($event);
+            parent::__construct($event, $repeater);
             $this->_device = $event->device; 
             $this->_sentance = $event->sentance;
             $this->_is_ring = $event->is_ring;
@@ -267,13 +271,13 @@
         private string $_desc;
         private Array $_children;
 
-        public function __construct($event, $h=0) { 
+        public function __construct($event, $repeater=null, $h=0) { 
             if(is_array($event)) {
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
             $this->controlEvent($event, $h);
-            parent::__construct($event);
+            parent::__construct($event, $repeater);
             $this->_desc = $event->desc;
             for ($i = 0; $i < sizeof($event->children); $i++) {
                 $this->_children[$i] = new Task($event->children[$i], $h + 1);

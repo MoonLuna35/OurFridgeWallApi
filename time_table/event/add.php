@@ -23,16 +23,19 @@ class AddEvent {
         else {
             $request = json_decode($postdata);
             //controle de l'evenement
+            if(!isset($request->data->repeater->repeat_body)) {
+                $request->data->repeater->repeat_body = null;
+            }
             if(isset($request->data->type)) {
                 switch ($request->data->type) {
                     case "event": {
-                        $this->_event = new Event($request->data->event);
+                        $this->_event = new Event($request->data->event, $request->data->repeater->repeat_body);
                     }break;
                     case "voice_reminder": {
-                        $this->_event = new Message($request->data->event);
+                        $this->_event = new Message($request->data->event, $request->data->repeater->repeat_body);
                     }break;
                     case "task": {
-                        $this->_event = new Task($request->data->event);
+                        $this->_event = new Task($request->data->event, $request->data->repeater->repeat_body);
                     }break;
                 }
             }
