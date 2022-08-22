@@ -35,6 +35,22 @@
         print_r($out);
     }
 
+    
+    function log400($file, $line) {
+        $date = new DateTime();
+        $date = $date->format('d-m-Y at H:i');
+        print_r("400 call from <b>$file</b> on line : <b>$line</b>" );
+        header('HTTP/1.1 400 Bad Request');
+        exit;
+    }
+
+    function log503($file, $line) {
+        $date = new DateTime();
+        $date = $date->format('d-m-Y at H:i');
+        print_r("$date : <b>503 Service Unavailable</b> call from <b>$file</b> on line : <b>$line</b>" );
+        header('HTTP/1.1 500 Service Unavailable');
+        exit;
+    }
 
     function validateDate($date, $format = 'Y-m-d H:i') {
         $d = DateTime::createFromFormat($format, $date);
@@ -42,9 +58,5 @@
         return $d && $d->format($format) === $date;
     }
 
-    function log400($file, $line) {
-        print_r("400 call from <b>$file</b> on line : <b>$line</b>" );
-        header('HTTP/1.1 400 Bad Request');
-        exit;
-    }
+   
     

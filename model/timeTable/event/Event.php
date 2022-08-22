@@ -2,7 +2,7 @@
 
     $root = realpath($_SERVER["DOCUMENT_ROOT"]);    
     require_once("../../controlers/global.php");
-    require_once("$root/OurFridgeWall/model/timeTable/repeater/Repeater.php");
+    require_once(ROOT_PATH . "model/timeTable/repeater/Repeater.php");
 
     abstract class AbstractEvent {
         protected int $_id = -1;
@@ -91,7 +91,7 @@
         public function get_id(): int  {
 			return $this->_id;
 		}
-        public function get_date_begin(): Date  {
+        public function get_date_begin(): DateTime  {
 			return $this->_date_begin;
 		}
         public function get_label(): string  {
@@ -166,13 +166,12 @@
                 return $event;
             }
             else {
-                header('HTTP/1.1 400 Bad Request');
-                exit; 
+                log400(__FILE__, __LINE__); 
             }
             return false;
         }
 
-        public function get_date_end(): Date  {
+        public function get_date_end(): DateTime  {
 			return $this->_date_end;
 		}
         public function get_desc(): string  {
@@ -235,8 +234,7 @@
                 return $event;
             }
             else { 
-                header('HTTP/1.1 400 Bad Request');
-                exit;
+                log400(__FILE__, __LINE__);
             }  
         }
 
@@ -304,8 +302,7 @@
                 return $event;
             }
             else { 
-                header('HTTP/1.1 400 Bad Request');
-                exit;
+                log400(__FILE__, __LINE__);
             }  
         }
 

@@ -43,7 +43,7 @@
 			return $this->_date_end;
 		}
         public function get_for_ever(): bool  {
-			return $this->for_ever;
+			return $this->_for_ever;
 		}
 		public function set_date_end(Date $new_date_end): void  {
 			$this->_date_end = $new_date_end;
@@ -59,7 +59,7 @@
                 "for_ever" => $this->_for_ever,
             );
         } 
-    }
+    } 
 
     class RepeaterDaily extends AbstractRepeater {
         private int $_n_day;

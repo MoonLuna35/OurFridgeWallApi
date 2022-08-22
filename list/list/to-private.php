@@ -74,8 +74,7 @@ else {
              
         ) { 
                 
-                header('HTTP/1.1 400 Bad Request');
-                exit;   
+                log400(__FILE__, __LINE__);   
         }
         else { //SINON 
                 if ($listDb->to_private($shopList, $current_user)) {//SI on a reussi a rendre la liste privee ALORS

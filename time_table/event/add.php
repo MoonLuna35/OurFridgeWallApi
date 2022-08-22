@@ -1,8 +1,8 @@
 <?php
 
 require "../../init.php";
-require_once "../../model/timeTable/event/Event.php";
-require_once "../../model/timeTable/event/EventDb.php";
+require_once ROOT_PATH . "model/timeTable/event/Event.php";
+require_once ROOT_PATH . "model/timeTable/event/EventDb.php";
 
 class AddEvent {
     private Event | Message | Task $_event;
@@ -50,14 +50,16 @@ class AddEvent {
                         }
                     }break;
                 }
-                print_r($this->_event);
             }
             
         }
     }
 
     public function add() { 
-
+        if($this->_event instanceof Event) {
+            $evtDb = new EventDb();
+            $evtDb->insert($this->_event);
+        }
     }
 
     public function get_event_JSON() {
@@ -66,3 +68,4 @@ class AddEvent {
 }
 
 $add_evt = new AddEvent();
+$add_evt->add();
