@@ -18,8 +18,7 @@
     $list = null;
 
     if(!isset($postdata) || empty($postdata)) { 
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         $request = json_decode($postdata);
@@ -31,8 +30,7 @@
             (int)$request->data->list->product->id  <= 0 ||
             (int)$request->data->list->product->qte  < 0  
         ) {
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
         else {
             $list = new ShopList (array(

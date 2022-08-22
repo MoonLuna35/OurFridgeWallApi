@@ -22,8 +22,7 @@
     $list = null;
 
     if(!isset($postdata) || empty($postdata)) { 
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         $request = json_decode($postdata);
@@ -34,8 +33,7 @@
             trim($request->data->list->product->label) === "" || 
             preg_match('/[^a-zA-Z_0-9-_äâàèéèëêïîöôùûü ]/',trim($request->data->list->product->label))
         ) {
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
         else {
             $list = new ShopList (array(

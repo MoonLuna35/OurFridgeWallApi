@@ -24,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 if(!isset($postdata) || empty($postdata)) { 
     
-    header('HTTP/1.1 400 Bad Request');
-    exit;   
+    log400(__FILE__, __LINE__); 
 }
 else {
     $request = json_decode($postdata);
@@ -36,8 +35,7 @@ else {
         !is_array($request->data->list->users_auth) ||
         (int)$request->data->list->id <= 0
     ) {
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         $shopList = new ShopList(array( //Om instancie la liste
@@ -46,8 +44,7 @@ else {
         guard($shopList, $current_user, true);
         $shopList = $listDb->select_author($shopList); //On recupere l'auteur
         if (!$shopList) {
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
         for ($i = 0; $i < sizeof($request->data->list->users_auth); $i++) { //POUR TOUT utilisateur authoirise
             if(  
@@ -57,8 +54,7 @@ else {
                 $request->data->list->users_auth[$i]->id === $current_user->get_id()
             ){
                 
-                header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur 400 
-                exit;
+                log400(__FILE__, __LINE__);
             }
             else { //SINON
                 $user_to_try = new User(array(
@@ -67,8 +63,7 @@ else {
                 ));
                 if(!$userDb->is_membership_of_house($user_to_try)) { //SI l'utilisateur qu'on veux authoriser ne fait pas parti de la maison de l'utilisateur courant ALORS
                     
-                    header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur 400 
-                    exit;
+                    log400(__FILE__, __LINE__);
                 }
                 else { //SINON 
                     array_push($users, $user_to_try); //On l'ajoute a la liste des utilisateurs

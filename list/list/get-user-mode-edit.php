@@ -25,8 +25,7 @@ $shopList = null;
 
 if(!isset($postdata) || empty($postdata)) { 
     
-    header('HTTP/1.1 400 Bad Request');
-    exit;   
+    log400(__FILE__, __LINE__); 
 }
 else {
     $request = json_decode($postdata);
@@ -34,8 +33,7 @@ else {
         !isset($request->data->list->id) || 
         (int)$request->data->list->id <= 0
         ) {
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         $shopList = new ShopList(array( //Om instancie la liste
@@ -50,8 +48,7 @@ else {
             !$listDb->list_is_existing($shopList)  //OU que la liste n'existe pas
              
         ) { 
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
 
         $users = $userDb->select_house_to_auth_lsit($shopList, $current_user);//On recupere la lsite des utilisateurs de la maison 

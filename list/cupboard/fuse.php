@@ -26,8 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 if(!isset($postdata) || empty($postdata)) { 
     
-    header('HTTP/1.1 400 Bad Request');
-    exit;   
+    log400(__FILE__, __LINE__); 
 }
 
 else {
@@ -38,8 +37,7 @@ else {
         !is_array($request->data->cupboard) ||
         (int)$request->data->list->id <= 0
     ) {
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         //On instancie les objets dont on a besoin
@@ -79,8 +77,7 @@ else {
                 }
             }   
             else { //SINON
-                header('HTTP/1.1 400 Bad Request'); //On renvoie 400
-                exit;   
+                log400(__FILE__, __LINE__); 
             }
             
         }

@@ -20,8 +20,7 @@
         !isset($request->data->type_printed) || //SI une variable dont on a besoin n'existe pas OU
         (int) $request->data->type_printed < 0
     ) {
-        header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur
-        exit; 
+        log400(__FILE__, __LINE__);
     }
 
     $types = $typeDb->select_all_custom_types($user, $request->data->type_printed);

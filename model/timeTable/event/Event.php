@@ -25,20 +25,20 @@
             
             $this->_label = $event->label; //On initialise le label
 
-            if(isset($repeater)) { //si il se repete ALORS
-                
+            if(isset($repeater->repeat_patern) && $h < 1 ) { //si il se repete ALORS
                 //on defini les classes a instanciees
-                if (isset($repeater->n_day)) { //SI jour ALORS
-
+                if ($repeater->repeat_patern === "daily") { //SI jour ALORS
+                    $this->_repeater = new RepeaterDaily($repeater);
                 }
-                else if (isset($repeater->n_week)) { //SI semaine ALORS
+                else if ($repeater->repeat_patern === "weekly") { //SI semaine ALORS
                     $this->_repeater = new RepeaterWeekly($repeater);
                 }
-                else if (isset($repeater->n_month)) { //SI mois ALORS
-
+                else if ($repeater->repeat_patern === "monthly") { //SI mois ALORS
+                    $this->_repeater = new RepeaterMonthly($repeater);
                 }
-                else if (isset($repeater->n_year)) { //SI annee ALORS
-
+                else if ($repeater->repeat_patern === "yearly") { //SI annee ALORS
+                    
+                    $this->_repeater = new RepeaterYearly($repeater);
                 }
                 //$this->$_repeater
             }
@@ -79,11 +79,12 @@
                 
                 return $event;
             }
+            
             else { //SINON
                 
-                header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur
-                exit; 
+                log400(__FILE__, __LINE__);
             }
+            
             return false;
         }
         //getters
@@ -277,7 +278,7 @@
                 $event = json_decode($event);
             }
             $this->controlEvent($event, $h);
-            parent::__construct($event, $repeater);
+            parent::__construct($event, $repeater, $h);
             $this->_desc = $event->desc;
             for ($i = 0; $i < sizeof($event->children); $i++) {
                 $this->_children[$i] = new Task($event->children[$i], $h + 1);
@@ -286,7 +287,7 @@
         }
 
         protected function controlEvent($event, $h=-1) {
-            $event = parent::controlEvent($event, $h);//On controle la tache courante
+            $event = parent::controlEvent($event, $h + 1);//On controle la tache courante
             if(
                 isset($event->desc)
                 &&

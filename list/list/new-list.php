@@ -15,8 +15,7 @@
     $list = null;
 
     if(!isset($postdata) || empty($postdata)) { 
-        header('HTTP/1.1 400 Bad Request');
-        exit;   
+        log400(__FILE__, __LINE__); 
     }
     else {
         $request = json_decode($postdata);
@@ -31,8 +30,7 @@
             !is_bool($request->data->list->is_private) ||
             !is_array($request->data->list->users_auth)
         ) {
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
         else {
             $secure_desc = htmlentities($request->data->list->desc);
@@ -44,8 +42,7 @@
                     "house" => $current_user->get_house()
                 )));//On creer les user auth
                 if(!$user_db->is_membership_of_house($users_auth[sizeof($users_auth)-1])) { //SI l'utilisateur qu'on veux authoriser ne fait pas parti de la maison de l'utilisateur courant ALORS
-                    header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur 400 
-                    exit;
+                    log400(__FILE__, __LINE__);
                 }
             }
             $list = new ShopList (array(

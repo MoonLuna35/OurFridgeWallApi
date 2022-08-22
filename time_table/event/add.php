@@ -16,30 +16,43 @@ class AddEvent {
         }
         if(!isset($postdata) || empty($postdata)) { 
         
-            header('HTTP/1.1 400 Bad Request');
-            exit;   
+            log400(__FILE__, __LINE__); 
         }
         
         else {
             $request = json_decode($postdata);
             //controle de l'evenement
-            if(!isset($request->data->repeater->repeat_body)) {
-                $request->data->repeater->repeat_body = null;
-            }
             if(isset($request->data->type)) {
                 switch ($request->data->type) {
                     case "event": {
-                        $this->_event = new Event($request->data->event, $request->data->repeater->repeat_body);
+                        if(isset($request->data->repeater)) {
+                            $this->_event = new Event($request->data->event, $request->data->repeater);
+                        }
+                        else {
+                            $this->_event = new Event($request->data->event);
+                        }
+                        
                     }break;
                     case "voice_reminder": {
-                        $this->_event = new Message($request->data->event, $request->data->repeater->repeat_body);
+                        if(isset($request->data->repeater)) {
+                            $this->_event = new Message($request->data->event, $request->data->repeater);
+                        }
+                        else {
+                            $this->_event = new Message($request->data->event);
+                        }
                     }break;
                     case "task": {
-                        $this->_event = new Task($request->data->event, $request->data->repeater->repeat_body);
+                        if(isset($request->data->repeater)) {
+                            $this->_event = new Task($request->data->event, $request->data->repeater);
+                        }
+                        else {
+                            $this->_event = new Task($request->data->event);
+                        }
                     }break;
                 }
+                print_r($this->_event);
             }
-            print_r($this->_event);
+            
         }
     }
 

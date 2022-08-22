@@ -9,8 +9,8 @@
 				$repeater = json_encode($repeater);
 				$repeater = json_decode($repeater);
 			}
-			if(isset($repeater->date_end)) {
-				$this->_date_end = $repeater->date_end;
+			if(isset($repeater->repeat_body->date_end)) {
+				$this->_date_end = $repeater->repeat_body->date_end;
 			}
 			else {
 				$this->_for_ever = true;
@@ -23,7 +23,7 @@
 				&&
 				!isset($repeater->for_ever)
 			){
-				$repeater->date_end = new Date($repeater->date_end);
+				$repeater->repeat_body->date_end = new Date($repeater->repeat_body->date_end);
 				return $repeater;
 			}
 			else if (
@@ -36,8 +36,7 @@
 				return $repeater;
 			}
 			else {
-				header('HTTP/1.1 400 Bad Request');
-                exit; 
+				log400(__FILE__, __LINE__); 
 			}
 		}
 		public function get_date_end(): Date  {
@@ -67,11 +66,11 @@
         public function __construct($repeater) {
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
-			$this->_n_day = $repeater->n_day;
+			$this->_n_day = $repeater->repeat_body->n_day;
 		}
 		protected function controlRepeater($repeater) {
 			$repeater = parent::controlRepeater($repeater);
-			if(isset($repeater->n_day) && $repeater->n_day > 0) { 
+			if(isset($repeater->repeat_body->n_day) && $repeater->repeat_body->n_day > 0) { 
 				return $repeater;
 			}
 			else {
@@ -99,54 +98,54 @@
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
 			
-			$this->_n_week = $repeater->n_week;
-			$this->_is_repeating_monday = $repeater->is_repeating_monday;
-        	$this->_is_repeating_tuesday = $repeater->is_repeating_tuesday;
-        	$this->_is_repeating_wednesday = $repeater->is_repeating_wednesday;
-        	$this->_is_repeating_thursday = $repeater->is_repeating_thursday;
-        	$this->_is_repeating_friday = $repeater->is_repeating_friday;
-        	$this->_is_repeating_saturday = $repeater->is_repeating_saturday;
-        	$this->_is_repeating_sunday = $repeater->is_repeating_sunday;
+			$this->_n_week = $repeater->repeat_body->n_week;
+			$this->_is_repeating_monday = $repeater->repeat_body->is_repeating_monday;
+        	$this->_is_repeating_tuesday = $repeater->repeat_body->is_repeating_tuesday;
+        	$this->_is_repeating_wednesday = $repeater->repeat_body->is_repeating_wednesday;
+        	$this->_is_repeating_thursday = $repeater->repeat_body->is_repeating_thursday;
+        	$this->_is_repeating_friday = $repeater->repeat_body->is_repeating_friday;
+        	$this->_is_repeating_saturday = $repeater->repeat_body->is_repeating_saturday;
+        	$this->_is_repeating_sunday = $repeater->repeat_body->is_repeating_sunday;
 		}
 		protected function controlRepeater($repeater) {
 			$repeater = parent::controlRepeater($repeater);
 			if(
-				isset($repeater->n_week) 
+				isset($repeater->repeat_body->n_week) 
 				&&
-				isset($repeater->is_repeating_monday)
+				isset($repeater->repeat_body->is_repeating_monday)
 				&& 
-				isset($repeater->is_repeating_tuesday)
+				isset($repeater->repeat_body->is_repeating_tuesday)
 				&& 
-				isset($repeater->is_repeating_wednesday)
+				isset($repeater->repeat_body->is_repeating_wednesday)
 				&& 
-				isset($repeater->is_repeating_thursday)
+				isset($repeater->repeat_body->is_repeating_thursday)
 				&& 
-				isset($repeater->is_repeating_friday)
+				isset($repeater->repeat_body->is_repeating_friday)
 				&& 
-				isset($repeater->is_repeating_saturday)
+				isset($repeater->repeat_body->is_repeating_saturday)
 				&& 
-				isset($repeater->is_repeating_sunday)
+				isset($repeater->repeat_body->is_repeating_sunday)
 				&& 
-				$repeater->n_week > 0
+				$repeater->repeat_body->n_week > 0
 				&&
-				is_bool($repeater->is_repeating_monday)
+				is_bool($repeater->repeat_body->is_repeating_monday)
 				&& 
-				is_bool($repeater->is_repeating_tuesday)
+				is_bool($repeater->repeat_body->is_repeating_tuesday)
 				&& 
-				is_bool($repeater->is_repeating_wednesday)
+				is_bool($repeater->repeat_body->is_repeating_wednesday)
 				&& 
-				is_bool($repeater->is_repeating_thursday)
+				is_bool($repeater->repeat_body->is_repeating_thursday)
 				&& 
-				is_bool($repeater->is_repeating_friday)
+				is_bool($repeater->repeat_body->is_repeating_friday)
 				&& 
-				is_bool($repeater->is_repeating_saturday)
+				is_bool($repeater->repeat_body->is_repeating_saturday)
 				&& 
-				is_bool($repeater->is_repeating_sunday)
+				is_bool($repeater->repeat_body->is_repeating_sunday)
 				) { 
 				return $repeater;
 			}
 			else {
-				print_r($repeater);
+
 				log400(__FILE__, __LINE__);
 			}
 		}
@@ -211,33 +210,33 @@
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
 
-			$this->_n_month = $repeater->n_month;
-			$this->_days_to_repeat = $repeater->days_to_repeat;
-			$this->_is_by_monthDay =  $repeater->is_by_monthDay;
+			$this->_n_month = $repeater->repeat_body->n_month;
+			$this->_days_to_repeat = $repeater->repeat_body->days_to_repeat;
+			$this->_is_by_monthDay =  $repeater->repeat_body->is_by_monthDay;
 		}
 		public function controlRepeater($repeater) {
 			$repeater = parent::controlRepeater($repeater);
 			if(
-				isset($repeater->n_month)
+				isset($repeater->repeat_body->n_month)
 				&&
-				isset($repeater->days_to_repeat)
+				isset($repeater->repeat_body->days_to_repeat)
 				&&
-				isset($repeater->is_by_monthDay)
+				isset($repeater->repeat_body->is_by_monthDay)
 				&&
-				$repeater->n_month > 0
+				$repeater->repeat_body->n_month > 0
 				&&
-				is_array($repeater->days_to_repeat)
+				is_array($repeater->repeat_body->days_to_repeat)
 				&&
-				is_bool($repeater->is_by_monthDay)
+				is_bool($repeater->repeat_body->is_by_monthDay)
 			) {
-				if($repeater->is_by_monthDay && sizeof($repeater->days_to_repeat) != 31) {
+				if($repeater->repeat_body->is_by_monthDay && sizeof($repeater->repeat_body->days_to_repeat) != 31) {
 					log400(__FILE__, __LINE__);
 				}
-				if(!$repeater->is_by_monthDay && sizeof($repeater->days_to_repeat) != 35) {
+				if(!$repeater->repeat_body->is_by_monthDay && sizeof($repeater->repeat_body->days_to_repeat) != 35) {
 					log400(__FILE__, __LINE__);
 				}
 
-				foreach($repeater->days_to_repeat as $value) {
+				foreach($repeater->repeat_body->days_to_repeat as $value) {
 					if(!is_bool($value)) {
 						log400(__FILE__, __LINE__);
 					}
@@ -303,9 +302,9 @@
 		public function __construct($repeater) {
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
-			$this->_n_year = $repeater->n_year;
-			$this->_day = $repeater->day;
-			$this->_month = $repeater->month; 
+			$this->_n_year = $repeater->repeat_body->n_year;
+			$this->_day = $repeater->repeat_body->day;
+			$this->_month = $repeater->repeat_body->month; 
 		}
 
 		private function controlDay(int $day, bool $is_short=true) {
@@ -320,61 +319,61 @@
 		protected function controlRepeater($repeater) {
 			$repeater = parent::controlRepeater($repeater);
 			if(
-				isset($repeater->n_year)
+				isset($repeater->repeat_body->n_year)
 				&&
-				isset($repeater->day)
+				isset($repeater->repeat_body->day)
 				&&
-				isset($repeater->month)
+				isset($repeater->repeat_body->month)
 				&& 
-				$repeater->day > 0
+				$repeater->repeat_body->day > 0
 				&&
-				$repeater->month < 13
+				$repeater->repeat_body->month < 13
 				&&
-				$repeater->month > 0
+				$repeater->repeat_body->month > 0
 				&&
-				$repeater->n_year > 0
+				$repeater->repeat_body->n_year > 0
 			) { 
-				switch($repeater->month) {
+				switch($repeater->repeat_body->month) {
 					case 1: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 2: {
-						if($repeater->is_leap_year &&  $repeater->day > 29) {
+						if($repeater->repeat_body->is_leap_year &&  $repeater->repeat_body->day > 29) {
 							log400(__FILE__, __LINE__);
 						}
-						else if(!$repeater->is_leap_year && $day > 28) {
+						else if(!$repeater->repeat_body->is_leap_year && $day > 28) {
 							log400(__FILE__, __LINE__);
 						}
 					} break;
 					case 3: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 4: {
-						$this->controlDay($repeater->day);
+						$this->controlDay($repeater->repeat_body->day);
 					} break;
 					case 5: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 6: {
-						$this->controlDay($repeater->day);
+						$this->controlDay($repeater->repeat_body->day);
 					} break;
 					case 7: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 8: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 9: {
-						$this->controlDay($repeater->day);
+						$this->controlDay($repeater->repeat_body->day);
 					} break;
 					case 10: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break;
 					case 11: {
-						$this->controlDay($repeater->day);
+						$this->controlDay($repeater->repeat_body->day);
 					} break;
 					case 12: {
-						$this->controlDay($repeater->day, false);
+						$this->controlDay($repeater->repeat_body->day, false);
 					} break; 
 				}
 				return $repeater;

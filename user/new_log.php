@@ -63,8 +63,7 @@
             }
         }
         else {
-            header('HTTP/1.1 400 Bad Request'); //On autorise pas la connexion
-            exit;//On redirige l'utilsisateur vers la page de connexion
+            log400(__FILE__, __LINE__);
         }
         
     }

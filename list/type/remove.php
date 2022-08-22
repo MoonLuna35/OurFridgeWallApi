@@ -28,8 +28,7 @@
         (int)$request->data->type->id <= 0 //que l'id est négatif OU
         
     ) {
-        header('HTTP/1.1 400 Bad Request'); //On renvoie une erreur
-        exit; 
+        log400(__FILE__, __LINE__);
     }
     else { //SINON (les données sont valides)
         $type = new Type(array(

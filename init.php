@@ -43,6 +43,7 @@
     }
 
     function log400($file, $line) {
+        print_r("400 call from <b>$file</b> on line : <b>$line</b>" );
         header('HTTP/1.1 400 Bad Request');
         exit;
     }
