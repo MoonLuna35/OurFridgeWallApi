@@ -11,6 +11,7 @@
         protected RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly | null $_repeater = null;
         
         public function __construct($event, $repeater=null, $h=-1) {
+            
             if(is_array($event)) { //SI l'event est un tableau ALORS
                 $event = json_encode($event); //On je convertie le tableau en objet 
                 $event = json_decode($event);
@@ -44,9 +45,44 @@
             }
         }
         
+        public static function event_duplicator($event): Array {
+            $events = array($event);
+            if($event->get_repeater() instanceof RepeaterDaily) {
+                if($event->get_repeater()->get_n_day() < 7) {
+                    $i = $event->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
+                    $i_init = $i;
+                    $c = 1;
+                    //TANT QUE i est superieur ou = a i init FAIRE
+                    while($i >= $i_init) {
+                        array_push($events, clone $events[$c - 1]);
+                        $events[$c]->set_date_begin($events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days'));  
+                        $i = $events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
+                        $c++;
+                        
+                    }
 
+                }
+            }
+            else if ($this->_repeater instanceof RepeaterWeekly) {
+
+            }
+            else if ($this->_repeater instanceof RepeaterMonthly) {
+
+            }
+            return $events;
+        }
+
+        public function __clone() {
+            foreach($this as $key => $val) {
+                
+                if (is_object($val) || (is_array($val))) {
+                    $this->{$key} = unserialize(serialize($val));
+                }
+            }
+        }
 
         protected function controlEvent($event, $h=-1) {
+            ($h  . " control  ". __LINE__ ."<br/>");
             if( $h < 1 //Si ce 'est pas une sous tache 
                 &&
                 isset($event->date_begin) //que l'evenement a une date de debut
@@ -60,6 +96,7 @@
                 validateDate($event->date_begin . " " . $event->time_begin)
                 //que la date de debut est valide ALORS 
             ) {
+                
                 $event->date_begin = new DateTime($event->date_begin . $event->time_begin); //On instancie la date de debut
                 unset($event->time_begin); //On supprime l'heure de debut(maintenant elle est dans la date )
                 $event->label = htmlentities($event->label);//On securise le label
@@ -81,7 +118,6 @@
             }
             
             else { //SINON
-                
                 log400(__FILE__, __LINE__);
             }
             
@@ -92,7 +128,7 @@
 			return $this->_id;
 		}
         public function get_date_begin(): DateTime  {
-			return $this->_date_begin;
+			return clone $this->_date_begin;
 		}
         public function get_label(): string  {
 			return $this->_label;
@@ -105,7 +141,7 @@
 		public function set_id(int $new_id): void  {
 			$this->_id = $new_id;
 		}
-		public function set_date_begin(Date $new_date_begin): void  {
+		public function set_date_begin(DateTime $new_date_begin): void  {
 			$this->_date_begin = $new_date_begin;
 		}
 		public function set_label(string $new_label): void  {
@@ -113,17 +149,22 @@
 		}
 
         //to array
-        public function to_array(): Array {
+        public function to_array($repeater=true): Array {
             $arr = array(
                 "id" => $this->_id,
-                "date_begin" => $this->_date_begin,
+                
                 "label" => $this->_label,
             );
-            if(isset($this->_repeater)) {
-               $arr = array_push($arr, ["repeater" => 'this->_repeater->to_array()']); 
+            if(isset($this->_repeater) && $repeater) {
+               $arr["repeater"] = $this->_repeater->to_array(); 
+            }
+            if(isset($this->_date_begin)) {
+                $arr["date_begin"] = $this->_date_begin;
             }
             return $arr;
         }
+
+        
     }
 
     class Event extends AbstractEvent {
@@ -190,13 +231,13 @@
 			$this->_place = $new_place;
 		}
 
-        public function to_array(): Array {
-            $arr = parent::to_array();
-            return array_push($arr, [
-                "date_end" => $this->_date_end,
-                "desc" => $this->$_desc,
-                "place" => $this->$_place
-            ]);
+        public function to_array($repeater=true): Array {
+            $arr = parent::to_array($repeater);
+            $arr["date_end"] = $this->_date_end;
+            $arr["desc"] = $this->_desc;
+            $arr["place"] = $this->_place;
+
+            return $arr;
         }
     }
 
@@ -256,36 +297,37 @@
 		public function set_is_ring(bool $new_is_ring): void  {
 			$this->_is_ring = $new_is_ring;
 		}
-        public function to_array(): Array {
-            $arr = parent::to_array();
-            return array_push($arr, [
-                "device" => $this->_device, 
-                "sentance" => $this->_sentance,
-                "is_ring" => $this->_is_ring
-            ]);
+        public function to_array($repeater=true): Array {
+            $arr = parent::to_array($repeater);
+            $arr["device"] = $this->_device; 
+            $arr["sentance"] = $this->_sentance;
+            $arr["is_ring"] = $this->_is_ring;
+            return $arr;
         }
     }
 
     class Task extends AbstractEvent { 
         private string $_desc;
-        private Array $_children;
+        private Array $_children = array();
 
         public function __construct($event, $repeater=null, $h=0) { 
             if(is_array($event)) {
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
-            $this->controlEvent($event, $h);
+            ($h  . " construct task ". __LINE__ ."<br/>");
+            $event = parent::controlEvent($event, $h);//On controle la tache courante
+            $event = $this->controlEvent($event, $h);
             parent::__construct($event, $repeater, $h);
             $this->_desc = $event->desc;
             for ($i = 0; $i < sizeof($event->children); $i++) {
-                $this->_children[$i] = new Task($event->children[$i], $h + 1);
+                $this->_children[$i] = new Task($event->children[$i], $repeater, $h + 1);
             }
 
         }
 
-        protected function controlEvent($event, $h=-1) {
-            $event = parent::controlEvent($event, $h + 1);//On controle la tache courante
+        protected function controlEvent($event, $h=0) {
+            ($h  . " control task ". __LINE__ ."<br/>");
             if(
                 isset($event->desc)
                 &&
@@ -295,8 +337,9 @@
                
             ) {
                 $event->desc = htmlentities($event->desc);
+                
                 for ($i = 0; $i < sizeof($event->children); $i++) { //POUR TOUT enfant FAIRE
-                    $this->controlEvent($event->children[$i], $h + 1); //On controle chaque sous taches
+                    $event->children[$i] = $this->controlEvent($event->children[$i], $h + 1); //On controle chaque sous taches
                 }
 
                 return $event;
@@ -318,19 +361,18 @@
 		public function set_children(Array $new_children): void  {
 			$this->_children = $new_children;
 		}
-        public function to_array($h=0): Array {
-            $arr = parent::to_array();
+        public function to_array($h=0, $repeater=true): Array {
+            $arr = parent::to_array($repeater);
             if ($h > 0) {
                 unset($arr["date_begin"]);
             }
             $children_arr = array();
-            for($i = 0; $i < sizeof($this->children); $i++) {
-                $children_arr = array_push($children_arr, $this->children[$i]->to_array($h + 1)); 
+            for($i = 0; $i < sizeof($this->_children); $i++) {
+                array_push($children_arr, $this->_children[$i]->to_array($h + 1, $repeater)); 
             }
-            return array_push($arr, [
-                "desc" => $this->_desc,
-                "children" => $children_arr
-            ]);
+            $arr["desc"] = $this->_desc;
+            $arr["children"] = $children_arr;
+            return $arr;
         }
 
         

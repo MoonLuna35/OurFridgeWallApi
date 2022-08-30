@@ -20,9 +20,12 @@ class AddEvent {
         }
         
         else {
+            
             $request = json_decode($postdata);
             //controle de l'evenement
+            
             if(isset($request->data->type)) {
+                
                 switch ($request->data->type) {
                     case "event": {
                         if(isset($request->data->repeater)) {
@@ -42,6 +45,7 @@ class AddEvent {
                         }
                     }break;
                     case "task": {
+                        
                         if(isset($request->data->repeater)) {
                             $this->_event = new Task($request->data->event, $request->data->repeater);
                         }
@@ -60,12 +64,34 @@ class AddEvent {
             $evtDb = new EventDb();
             $evtDb->insert($this->_event);
         }
+        else if($this->_event instanceof Message) {
+            $evtDb = new MessageDb();
+            $evtDb->insert($this->_event);
+        }
+        else if($this->_event instanceof Task) {
+            $evtDb = new TaskDb();
+            $this->_event = $evtDb->insert($this->_event);
+        }
+        else {
+            log500(__FILE__, __LINE__);
+        }
     }
 
-    public function get_event_JSON() {
-        
+    public function get_event_array () {
+        $events = AbstractEvent::event_duplicator($this->_event);
+        $evt_arr = array();
+        foreach($events as $evt) {
+            array_push($evt_arr, $evt->to_array(false));
+        }
+        return $evt_arr;
     }
 }
 
 $add_evt = new AddEvent();
 $add_evt->add();
+
+
+$output["data"]["status"] = "ok";
+$output["data"]["events"] = $add_evt->get_event_array();
+
+print_r(json_encode($output));
