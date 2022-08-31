@@ -45,7 +45,10 @@
             }
         }
         
-        public static function event_duplicator($event): Array {
+        public static function event_duplicator(Event|Message|Task $event): Array {
+            //Dans le cas ou un evenement commence le dimanche soir et se poursuit le lundi
+            //On doit afficher la fin de l'event
+            
             $events = array($event);
             if($event->get_repeater() instanceof RepeaterDaily) {
                 if($event->get_repeater()->get_n_day() < 7) {
@@ -58,16 +61,38 @@
                         $events[$c]->set_date_begin($events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days'));  
                         $i = $events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
                         $c++;
-                        
                     }
 
                 }
             }
-            else if ($this->_repeater instanceof RepeaterWeekly) {
-
+            else if ($event->get_repeater() instanceof RepeaterWeekly) {
+                $repeat_day = $event->get_repeater()->get_repeat_day_array();
+                
+                $current_day = $event->get_date_begin()->format( 'N' ) - 1;//On prends le jour de la semaine de la date de debut (on est sur qu'il est repete)
+                for($i = $current_day + 1; $i < sizeof($repeat_day); $i++) {
+                    if($repeat_day[$i]) {
+                        $cloned_evt = clone $event;
+                        $cloned_evt->set_date_begin($event->get_date_begin()->modify("+" . $i - $current_day . " days")); 
+                        array_push($events, $cloned_evt);
+                    }
+                }
+                //On regarde les jours suivant    
             }
-            else if ($this->_repeater instanceof RepeaterMonthly) {
+            else if ($event->get_repeater() instanceof RepeaterMonthly) {
+                $days = $event->get_repeater()->get_days_to_repeat(true);
+                $current_day = $event->get_date_begin()->format( 'd' );
+                $current_weekDay = $event->get_date_begin()->format( 'N' ) - 1;
+                $monday = $event->get_date_begin()->modify("-$current_weekDay days") -> format("d");
+                $sunday = $event->get_date_begin()->modify("+ " . 6 - $current_weekDay . " days") -> format("d");
 
+                print_r($sunday);
+                foreach($days as $value) {
+                    if($value >= $monday && $value <= $sunday ) {
+                        $cloned_evt = clone $event;
+                        $cloned_evt->set_date_begin($event->get_date_begin()->modify("+" . $value - $current_day . " days")); 
+                        array_push($events, $cloned_evt);
+                    }
+                }
             }
             return $events;
         }
@@ -361,14 +386,14 @@
 		public function set_children(Array $new_children): void  {
 			$this->_children = $new_children;
 		}
-        public function to_array($h=0, $repeater=true): Array {
+        public function to_array($repeater=true, $h=0): Array {
             $arr = parent::to_array($repeater);
             if ($h > 0) {
                 unset($arr["date_begin"]);
             }
             $children_arr = array();
             for($i = 0; $i < sizeof($this->_children); $i++) {
-                array_push($children_arr, $this->_children[$i]->to_array($h + 1, $repeater)); 
+                array_push($children_arr, $this->_children[$i]->to_array($repeater, $h + 1)); 
             }
             $arr["desc"] = $this->_desc;
             $arr["children"] = $children_arr;

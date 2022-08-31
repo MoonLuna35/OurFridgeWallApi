@@ -187,6 +187,17 @@
         public function get_is_repeating_sunday(): bool  {
 			return $this->_is_repeating_sunday;
 		}
+		public function get_repeat_day_array(): array {
+			return array(
+				$this->_is_repeating_monday,
+				$this->_is_repeating_tuesday,
+				$this->_is_repeating_wednesday,
+				$this->_is_repeating_thursday,
+				$this->_is_repeating_friday,
+				$this->_is_repeating_saturday,
+				$this->_is_repeating_sunday
+			);
+		}
 
 		public function set_n_week(int $new_n_week): void  {
 			$this->_n_week = $new_n_week;
@@ -280,8 +291,20 @@
         public function get_n_month(): int  {
 			return $this->_n_month;
 		}
-        public function get_days_to_repeat(): string  {
-			return $this->_days_to_repeat;
+        public function get_days_to_repeat(bool $want_arr=false): string|array  {
+			if($want_arr) {
+				$arr= array();
+				$exploded_days = explode(";", $this->_days_to_repeat);
+
+				foreach ($exploded_days as $value) {
+					array_push($arr,$value);
+				}
+				return $arr;
+			}
+			else {
+				return $this->_days_to_repeat;
+			}
+			
 		}
         public function get_is_by_monthDay(): bool  {
 			return $this->_is_by_monthDay;
