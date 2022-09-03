@@ -42,7 +42,7 @@ class AddEvent {
                     case "voice_reminder": {
                         
                         if(isset($request->data->repeater)) {
-                            print_r($request);
+                            //print_r($request);
                             $this->_event = new Message($request->data->event, $current_user, $request->data->repeater);
                         }
                         else {

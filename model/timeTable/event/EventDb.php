@@ -52,14 +52,15 @@
             else if($this->_event->get_repeater() instanceof RepeaterYearly) {
                 $repDb = new RepeaterYearlyDb();
             }
-            //On gere le repeteur
-            $rep_arr = $repDb->insert($this->_event->get_repeater());
-            $this->_querry_str_coll = trim($this->_querry_str_coll) . ", " .  $rep_arr["str_coll"];
-            $this->_querry_str_args = trim($this->_querry_str_args) . ", " .  $rep_arr["str_args"];
-
-            foreach($rep_arr["args"] as $key => $value) {
-                $this->_querry_args[$key] = $rep_arr["args"][$key];
-            }
+            if(isset($repDb)) {
+                //On gere le repeteur
+                $rep_arr = $repDb->insert($this->_event->get_repeater());
+                $this->_querry_str_coll = trim($this->_querry_str_coll) . ", " .  $rep_arr["str_coll"];
+                $this->_querry_str_args = trim($this->_querry_str_args) . ", " .  $rep_arr["str_args"];
+                foreach($rep_arr["args"] as $key => $value) {
+                    $this->_querry_args[$key] = $rep_arr["args"][$key];
+                }
+            }     
         }
     }
 
@@ -68,7 +69,9 @@
         protected string $_querry_str = "";
         
         public function select_by_week(DateTime $monday, User $user) {
-            $sunday = $monday->modify("+7 days");
+            $sunday = clone $monday;
+            $sunday = $sunday->modify("+7 days");
+            
             $events = array();
             $this->_querry_str = "
                 SELECT 
@@ -96,7 +99,7 @@
                         (
                             repeat_is_for_ever = 1
                             OR 
-                            DATEDIFF(repeat_end, :sunday) >=0
+                            DATEDIFF(repeat_date_end, :sunday) >=0
                         )
                         AND (
                             parent IS NULL 
@@ -115,22 +118,78 @@
             );
             $result = $this->commiter();
             $fetched = $result->fetchAll(PDO::FETCH_ASSOC);
-
-            for($i = 0; $i < sizeof($fetched); $i++) {
+            for($i = 0 ; $i < sizeof($fetched); $i++) {
+                if( //SI il y a un repeteur ALORS
+                    $fetched[$i]["repeat_is_for_ever"]  
+                    ||
+                    $fetched[$i]["repeat_date_end"]
+                ) {
+                    //on forme le repeteur
+                    $repeater_arr = array();
+                    foreach($fetched[$i] as $key => $value) {
+                        if(str_contains($key, "repeat_")) {
+                            $k = str_replace("repeat_", "", $key);
+                            if(str_contains($key, "is_by_monthDay") && is_int($value)) {
+                                
+                                $repeater_arr[$k] = $value === 1 ? true : false; 
+                            }
+                            else {
+                                $repeater_arr[$k] = $value;
+                            }
+                        }
+                        else if(str_contains($key, "is_repeating")) {
+                            if(is_int($value)) {
+                                $repeater_arr[$key] = $value === 1 ? true : false; 
+                            }
+                        }
+                    }
+                    
+                    if($fetched[$i]["repeat_n_day"]) {
+                        $repeater = new RepeaterDaily($repeater_arr);
+                    }
+                    else if($fetched[$i]["repeat_n_week"]) {
+                        
+                        $repeater = new RepeaterWeekly($repeater_arr);
+                    }
+                    else if($fetched[$i]["repeat_n_month"]) {
+                        $repeater = new RepeaterMonthly($repeater_arr);
+                    }
+                    else if($fetched[$i]["repeat_n_year"]) {
+                        $repeater = new RepeaterYearly($repeater_arr);
+                        
+                    }
+                }
+            
+                
                 if($fetched[$i]["date_end"]) { //SI c'est un event ALORS
                     array_push($events, new Event($fetched[$i]));
-                    
                 }
                 else if($fetched[$i]["sentance"]) { //SI c'est un event ALORS
                     array_push($events, new Message ($fetched[$i]));
                 }
                 else if($fetched[$i]["parent"]) { //SINON SI c'est un message ALORS 
-                    array_push($events, new Message ($fetched[$i]));
+                    array_push($events, new Task ($fetched[$i]));
                 }
-                //On determine le repeteur si il y en a un
-                //$events[$i]->set_repeater(); 
+                $repeater->set_event($events[sizeof($events) - 1]);
+                $interval = date_diff($events[sizeof($events) - 1]->get_date_begin(), $monday);
+                $interval = $interval->format('%a');
+                if(
+                    $interval >= 0 
+                    && 
+                    ($repeater instanceof RepeaterDaily
+                    ||
+                    $repeater instanceof RepeaterWeekly
+                    ||
+                    $repeater instanceof RepeaterYearly
+                    )
+                ) {
+                    array_pop($events);
+                }
+                $repeater->repeat($monday, $events);
             }
+
             print_r($events);
+            
         }
         
 
@@ -165,7 +224,7 @@
                 ":date_begin" => date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s'), 
                 ":label" => $this->_event->get_label(),
                 ":date_end" => date_format($this->_event->get_date_end(), 'Y-m-d H:i:s'),
-                ":description" => $this->_event->get_desc(),
+                ":description" => $this->_event->get_description(),
                 ":place" => $this->_event->get_place(),
                 ":house" => $this->_event->get_user()->get_house()
             );
@@ -252,7 +311,7 @@
             $this->_querry_args = array(
                 
                 ":label" => $event->get_label(),
-                ":description" => $event->get_desc(),
+                ":description" => $event->get_description(),
                 ":house" => $this->_event->get_user()->get_house()
             );
             //On genere le nom des collones

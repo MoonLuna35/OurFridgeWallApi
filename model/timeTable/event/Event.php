@@ -52,6 +52,14 @@
                 //$this->$_repeater
             }
         }
+        public function __clone() {
+            foreach($this as $key => $val) {
+                
+                if (is_object($val) || (is_array($val))) {
+                    $this->{$key} = unserialize(serialize($val));
+                }
+            }
+        }
         
         public static function event_duplicator(Event|Message|Task $event): Array {
             //Dans le cas ou un evenement commence le dimanche soir et se poursuit le lundi
@@ -106,15 +114,6 @@
                 }
             }
             return $events;
-        }
-
-        public function __clone() {
-            foreach($this as $key => $val) {
-                
-                if (is_object($val) || (is_array($val))) {
-                    $this->{$key} = unserialize(serialize($val));
-                }
-            }
         }
 
         protected function controlEvent($event, $h=-1) {
@@ -336,6 +335,7 @@
                 return $event;
             }
             else { 
+                //print_r($event);
                 log400(__FILE__, __LINE__);
             }  
         }

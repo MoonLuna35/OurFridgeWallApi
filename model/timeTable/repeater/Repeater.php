@@ -3,27 +3,61 @@
     abstract class AbstractRepeater {
         protected ?Date $_date_end;
         protected ?bool $_for_ever; 
+		protected Event|Message|Task $_event;
         
+		abstract public function repeat(DateTime $monday, &$events): void; 
 		public function __construct($repeater) {
-			if(is_array($repeater)) {
-				$repeater = json_encode($repeater);
-				$repeater = json_decode($repeater);
-			}
 			if(isset($repeater->repeat_body->date_end)) {
-				$this->_date_end = $repeater->repeat_body->date_end;
+				$this->_date_end = $repeater->date_end;
 			}
 			else {
 				$this->_for_ever = true;
 			}
 		}
 
+		protected function array_transform_for_construct($repeater): mixed {
+			$transformed_repeater = array();
+			
+			if(is_array($repeater)) {
+				
+				if(
+					isset($repeater["date_end"])
+					&&
+					$repeater["date_end"] instanceof DateTime
+				) {
+					$repeater["date_end"] = $repeater["date_end"]->format("Y-m-d");
+				}
+				if(
+					isset($repeater["is_for_ever"])
+					&&
+					is_int($repeater["is_for_ever"])
+				) {
+					$repeater["for_ever"] = $repeater["is_for_ever"] === 1 ? true : false;
+				}
+				foreach($repeater as $key => $value) {
+					if($key !== "for_ever" && $key !== "date_end") {
+						$repeater["repeat_body"][$key] = $value;
+						
+						unset($repeater[$key]);
+					}
+				}
+				
+				$repeater = json_encode($repeater);
+				$repeater = json_decode($repeater);
+				
+			}
+			
+			return $repeater;
+		}
+
 		protected function controlRepeater($repeater) {
+			
 			if(
 				isset($repeater->date_end)
 				&&
 				!isset($repeater->for_ever)
 			){
-				$repeater->repeat_body->date_end = new Date($repeater->repeat_body->date_end);
+				$repeater->date_end = new Date($repeater->date_end);
 				return $repeater;
 			}
 			else if (
@@ -36,20 +70,29 @@
 				return $repeater;
 			}
 			else {
+				
 				log400(__FILE__, __LINE__); 
 			}
 		}
+
+		//getters
 		public function get_date_end(): Date  {
 			return $this->_date_end;
 		}
         public function get_for_ever(): bool  {
 			return $this->_for_ever;
 		}
+		public function get_event(): mixed {
+			return $this->_event;
+		}
 		public function set_date_end(Date $new_date_end): void  {
 			$this->_date_end = $new_date_end;
 		}
 		public function set_for_ever(bool $newfor_ever): void  {
 			$this->for_ever = $newfor_ever;
+		}
+		public function set_event($new_event): void  {
+			$this->_event = $new_event;
 		}
 
         public function to_array(): Array {
@@ -71,6 +114,7 @@
     class RepeaterDaily extends AbstractRepeater {
         private int $_n_day;
         public function __construct($repeater) {
+			$repeater = $this->array_transform_for_construct($repeater);
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
 			$this->_n_day = $repeater->repeat_body->n_day;
@@ -82,6 +126,43 @@
 			}
 			else {
 				log400(__FILE__, __LINE__);
+			}
+		}
+
+		public function repeat(DateTime $monday, &$events): void {
+
+			$current_date = clone $monday;//La date du jour courant qui commence Lundi
+			$sunday = clone $monday;//Le premier Dimanche depuis le Lundi
+			
+			$sunday->modify("+6 days");
+
+			$interval = $this->_event->get_date_begin()->diff($monday); //On fait la difference entre le jour de debut et le Lundi
+			$interval = $interval->format('%R%a');
+			for($i = 0; $i < 7 ; $i++) { //POUR TOUT i de 0 a 6 FAIRE
+				if($interval % $this->_n_day === 0) { //SI C'est un jour ou l'event se repete
+					$cloned_evt = clone $this->_event;
+					$cloned_evt->set_date_begin($cloned_evt->get_date_begin()->modify("+$interval days"));
+					if($this->_event instanceof Event) {
+						$cloned_evt->set_date_end($cloned_evt->get_date_end()->modify("+$interval days"));
+					}
+					if(
+						isset($this->_date_end)
+						&&
+						(date_diff($this->_date_end, $cloned_evt->get_date_begin())->format("%a") <= 0)
+					) {
+						$i = 42;
+					}
+					else {
+						array_push($events, $cloned_evt);
+					}
+					if(
+						(date_diff($sunday, $cloned_evt->get_date_begin())->format("%a") <= 0)
+					) {
+						$i = 42;
+					}
+				}
+				
+				$interval ++;
 			}
 		}
         public function get_n_day(): int  {
@@ -108,6 +189,7 @@
         private bool $_is_repeating_sunday; 
         
 		public function __construct($repeater) {
+			$repeater = $this->array_transform_for_construct($repeater);
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
 			
@@ -158,8 +240,29 @@
 				return $repeater;
 			}
 			else {
-
+				
 				log400(__FILE__, __LINE__);
+			}
+		}
+
+		public function repeat(DateTime $monday, &$events): void {
+			$bool_arr = $this->get_repeat_day_array();
+			$i_init = 0;
+			$interval = $this->_event->get_date_begin()->diff($monday); //On fait la difference entre le jour de debut et le Lundi
+			$interval = $interval->format('%R');
+			if($interval === "-" ) {
+				$i_init = $this->_event->get_date_begin()->format("N");
+			}
+			for($i = $i_init; $i < sizeof($bool_arr); $i++) {
+				if($bool_arr[$i]) {
+					$cloned_evt = clone $this->_event;
+					$d = (clone $monday)->modify("+" . $i . " days");
+					$cloned_evt->set_date_begin($cloned_evt->get_date_begin()->setDate($d->format("Y"), $d->format("m"), $d->format("d")));
+					if($this->_event instanceof Event) {
+						$cloned_evt->set_date_end($cloned_evt->get_date_end()->modify("+$interval days"));
+					}
+					array_push($events, $cloned_evt);
+				}
 			}
 		}
 
@@ -242,7 +345,8 @@
         private string $_days_to_repeat;
         private bool $_is_by_monthDay;
 
-		public function __construct($repeater) { 
+		public function __construct($repeater) {
+			$repeater = $this->array_transform_for_construct($repeater); 
 			$repeater = $this->controlRepeater($repeater);
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
@@ -284,8 +388,12 @@
 				return $repeater;
 			}
 			else {
+				print_r($repeater);
 				log400(__FILE__, __LINE__);
 			}
+		}
+
+		public function repeat(DateTime $monday, &$events): void {
 		}
 
         public function get_n_month(): int  {
@@ -332,6 +440,7 @@
         private int $_n_year;
 
 		public function __construct($repeater) {
+			$repeater = $this->array_transform_for_construct($repeater);
 			$repeater = $this->controlRepeater($repeater);
 			parent::__construct($repeater);
 			$this->_n_year = $repeater->repeat_body->n_year;
@@ -360,6 +469,22 @@
 			}
 		}
 
+		public function repeat(DateTime $monday, &$events): void {
+			$event_year = $this->_event->get_date_begin()->format("m-d");
+			$current = clone $monday;
+			for($i = 0; $i < 6; $i++) {
+				if($event_year === $current->modify("+$i days")->format("m-d")) {
+					if($current->format("Y") % $this->_n_year === 0 ) {
+						$cloned_evt = clone $this->_event;
+						$cloned_evt->set_date_begin($cloned_evt->get_date_begin()->setDate($current->format("Y"), $current->format("m"), $current->format("d")));
+						if($this->_event instanceof Event) {
+							$cloned_evt->set_date_end($cloned_evt->get_date_end()->modify("+$interval days"));
+						}
+						array_push($events, $cloned_evt);
+					}
+				}
+			}
+		}
 		public function get_n_year(): int  {
 			return $this->_n_year;
 		}
@@ -372,4 +497,8 @@
 			$arr["n_year"] = $this->_n_year;
 			return $arr;
         } 
+
+		
+
+		
     }

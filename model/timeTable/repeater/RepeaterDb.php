@@ -30,11 +30,11 @@
             }
             else {
                 $this->_querry_str_coll = "
-                    repeat_end,
+                    repeat_date_end,
                     repeat_n_day
                 ";
                 $this->_querry_args = array(
-                    ":repeat_end" => 1,
+                    ":repeat_date_end" => 1,
                     ":repeat_n_day" => $repeater->get_n_day()
                 );
             }
@@ -67,10 +67,10 @@
             }
             else {
                 $this->_querry_str_coll = "
-                    repeat_end,
+                    repeat_date_end,
                 ";
                 $this->_querry_args = array(
-                    ":repeat_end" => 1,
+                    ":repeat_date_end" => 1,
                 );
             }
 
@@ -120,10 +120,10 @@
             }
             else {
                 $this->_querry_str_coll = "
-                    repeat_end,
+                    repeat_date_end,
                 ";
                 $this->_querry_args = array(
-                    ":repeat_end" => 1,
+                    ":repeat_date_end" => 1,
                 );
             }
 
@@ -164,10 +164,10 @@
             }
             else {
                 $this->_querry_str_coll = "
-                    repeat_end,
+                    repeat_date_end,
                 ";
                 $this->_querry_args = array(
-                    ":repeat_end" => 1,
+                    ":repeat_date_end" => 1,
                 );
             }
 

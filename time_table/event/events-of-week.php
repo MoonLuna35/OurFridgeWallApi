@@ -25,7 +25,7 @@ class EventsOfWeek {
                 validateDate($request->data->monday)
             ) {
                 $this->_eventDb = new EventBaseDb();
-                $this->_eventDb->select_by_week(DateTime::createFromFormat("Y-d-m", $request->data->monday), $this->_user);
+                $this->_eventDb->select_by_week(DateTime::createFromFormat("Y-m-d", $request->data->monday), $this->_user);
             }
             else {
                 log400(__FILE__, __LINE__);
