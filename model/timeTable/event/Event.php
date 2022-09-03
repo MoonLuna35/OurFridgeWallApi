@@ -9,10 +9,18 @@
         protected ?DateTime $_date_begin;
         protected string $_label;
         protected RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly | null $_repeater = null;
-        
-        public function __construct($event, $repeater=null, $h=-1) {
+        private ?User $_user =  null;
+
+
+        public function __construct($event, $user=null, $repeater=null, $h=-1) {
+            
+            if(isset($user)) {
+                $this->_user = $user;
+            }
             
             if(is_array($event)) { //SI l'event est un tableau ALORS
+                
+
                 $event = json_encode($event); //On je convertie le tableau en objet 
                 $event = json_decode($event);
             }
@@ -52,16 +60,20 @@
             $events = array($event);
             if($event->get_repeater() instanceof RepeaterDaily) {
                 if($event->get_repeater()->get_n_day() < 7) {
-                    $i = $event->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
-                    $i_init = $i;
-                    $c = 1;
-                    //TANT QUE i est superieur ou = a i init FAIRE
-                    while($i >= $i_init) {
-                        array_push($events, clone $events[$c - 1]);
-                        $events[$c]->set_date_begin($events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days'));  
-                        $i = $events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
-                        $c++;
+                    if ($event->get_date_begin()->format("N") + $event->get_repeater()->get_n_day()  <= 7) {
+                        $i = $event->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
+                        $i_init = $i;
+                        $c = 1;
+                        //TANT QUE i est superieur ou = a i init FAIRE
+                        while($i >= $i_init) {
+                    
+                            array_push($events, clone $events[$c - 1]);
+                            $events[$c]->set_date_begin($events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days'));  
+                            $i = $events[$c]->get_date_begin()->modify('+ ' . $event->get_repeater()->get_n_day() . ' days')->format( 'N' );
+                            $c++;
+                        }
                     }
+                    
 
                 }
             }
@@ -85,7 +97,6 @@
                 $monday = $event->get_date_begin()->modify("-$current_weekDay days") -> format("d");
                 $sunday = $event->get_date_begin()->modify("+ " . 6 - $current_weekDay . " days") -> format("d");
 
-                print_r($sunday);
                 foreach($days as $value) {
                     if($value >= $monday && $value <= $sunday ) {
                         $cloned_evt = clone $event;
@@ -118,7 +129,7 @@
                 &&
                 "" !== trim($event->label) //que le label n'est pas vide
                 &&
-                validateDate($event->date_begin . " " . $event->time_begin)
+                validateDateTime($event->date_begin . " " . $event->time_begin)
                 //que la date de debut est valide ALORS 
             ) {
                 
@@ -149,6 +160,7 @@
             return false;
         }
         //getters
+        
         public function get_id(): int  {
 			return $this->_id;
 		}
@@ -161,6 +173,9 @@
         public function get_repeater(): mixed {
             return $this->_repeater;
         }
+        public function get_user(): User  {
+			return $this->_user;
+		}
 
         //setters
 		public function set_id(int $new_id): void  {
@@ -171,6 +186,9 @@
 		}
 		public function set_label(string $new_label): void  {
 			$this->_label = $new_label;
+		}
+        public function set_user(User $new_user): void  {
+			$this->_user = $new_user;
 		}
 
         //to array
@@ -194,20 +212,33 @@
 
     class Event extends AbstractEvent {
         private DateTime $_date_end;
-        private string $_desc; 
+        private string $_description; 
         protected string $_place;
         
-        public function __construct($event, $repeater=null) { 
+        public function __construct($event, $user=null, $repeater=null) { 
             if(is_array($event)) {
+                //$event["time_begin"] =  $event["time_begin"];
+                $d = new DateTime($event["date_begin"]);
+                $event["time_begin"] = $d->format("H:i");
+                $event["date_begin"] = $d->format("Y-m-d");
+
+               
+
+                $d = new DateTime($event["date_end"]);
+                $event["date_end"] = $d->format("Y-m-d");
+                $event["time_end"] = $d->format("H:i");
+                
+                
                 $event = json_encode($event);
                 $event = json_decode($event);
+                
             }
             $event = $this->controlEvent($event);
             
-            parent::__construct($event, $repeater);
+            parent::__construct($event, $user, $repeater);
 
             $this->_date_end = $event->date_end;
-            $this->_desc = $event->desc;
+            $this->_description = $event->description;
             $this->_place = $event->place;
         }
 
@@ -218,11 +249,11 @@
                 &&
                 isset($event->time_end)
                 &&
-                isset($event->desc)
+                isset($event->description)
                 &&
                 isset($event->place)
                 &&
-                validateDate($event->date_end . " " . $event->time_end)
+                validateDateTime($event->date_end . " " . $event->time_end)
     
             ) {
                 $event->date_end = new DateTime($event->date_end . $event->time_end);
@@ -240,8 +271,8 @@
         public function get_date_end(): DateTime  {
 			return $this->_date_end;
 		}
-        public function get_desc(): string  {
-			return $this->_desc;
+        public function get_description(): string  {
+			return $this->_description;
 		}
         public function get_place(): string  {
 			return $this->_place;
@@ -249,8 +280,8 @@
 		public function set_date_end(Date $new_date_end): void  {
 			$this->_date_end = $new_date_end;
 		}
-		public function set_desc(string $new_desc): void  {
-			$this->_desc = $new_desc;
+		public function set_description(string $new_description): void  {
+			$this->_description = $new_description;
 		}
 		public function set_place(string $new_place): void  {
 			$this->_place = $new_place;
@@ -259,7 +290,7 @@
         public function to_array($repeater=true): Array {
             $arr = parent::to_array($repeater);
             $arr["date_end"] = $this->_date_end;
-            $arr["desc"] = $this->_desc;
+            $arr["description"] = $this->_description;
             $arr["place"] = $this->_place;
 
             return $arr;
@@ -271,13 +302,18 @@
         private string $_sentance;
         private bool $_is_ring; 
         
-        public function __construct($event, $repeater=null) {
+        public function __construct($event, $user=null, $repeater=null) {
             if(is_array($event)) {
+                $d = new DateTime($event["date_begin"]);
+                $event["is_ring"] = $event["is_ring"] === 1 ? true : false;
+                $event["time_begin"] = $d->format("H:i");
+                $event["date_begin"] = $d->format("Y-m-d");
+
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
             $event = $this->controlEvent($event);
-            parent::__construct($event, $repeater);
+            parent::__construct($event, $user, $repeater);
             $this->_device = $event->device; 
             $this->_sentance = $event->sentance;
             $this->_is_ring = $event->is_ring;
@@ -332,21 +368,26 @@
     }
 
     class Task extends AbstractEvent { 
-        private string $_desc;
+        private string $_descriptionription;
         private Array $_children = array();
 
-        public function __construct($event, $repeater=null, $h=0) { 
+        public function __construct($event,  $user=null, $repeater=null, $h=0) { 
             if(is_array($event)) {
+                $d = new DateTime($event["date_begin"]);
+                $event["time_begin"] = $d->format("H:i");
+                $event["date_begin"] = $d->format("Y-m-d");
+                $event["children"] = array();
+
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
             ($h  . " construct task ". __LINE__ ."<br/>");
             $event = parent::controlEvent($event, $h);//On controle la tache courante
             $event = $this->controlEvent($event, $h);
-            parent::__construct($event, $repeater, $h);
-            $this->_desc = $event->desc;
+            parent::__construct($event, $user, $repeater, $h);
+            $this->_description = $event->description;
             for ($i = 0; $i < sizeof($event->children); $i++) {
-                $this->_children[$i] = new Task($event->children[$i], $repeater, $h + 1);
+                $this->_children[$i] = new Task($event->children[$i], $user, $repeater, $h + 1);
             }
 
         }
@@ -354,14 +395,14 @@
         protected function controlEvent($event, $h=0) {
             ($h  . " control task ". __LINE__ ."<br/>");
             if(
-                isset($event->desc)
+                isset($event->description)
                 &&
                 isset($event->children)
                 &&
                 is_array($event->children)
                
             ) {
-                $event->desc = htmlentities($event->desc);
+                $event->description = htmlentities($event->description);
                 
                 for ($i = 0; $i < sizeof($event->children); $i++) { //POUR TOUT enfant FAIRE
                     $event->children[$i] = $this->controlEvent($event->children[$i], $h + 1); //On controle chaque sous taches
@@ -374,14 +415,14 @@
             }  
         }
 
-		public function get_desc(): string  {
-			return $this->_desc;
+		public function get_description(): string  {
+			return $this->_description;
 		}
         public function get_children(): Array  {
 			return $this->_children;
 		}
-		public function set_desc(string $new_desc): void  {
-			$this->_desc = $new_desc;
+		public function set_description(string $new_description): void  {
+			$this->_description = $new_description;
 		}
 		public function set_children(Array $new_children): void  {
 			$this->_children = $new_children;
@@ -395,10 +436,12 @@
             for($i = 0; $i < sizeof($this->_children); $i++) {
                 array_push($children_arr, $this->_children[$i]->to_array($repeater, $h + 1)); 
             }
-            $arr["desc"] = $this->_desc;
+            $arr["description"] = $this->_description;
             $arr["children"] = $children_arr;
             return $arr;
         }
 
         
+
+		
     }

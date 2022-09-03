@@ -39,6 +39,7 @@
          * 
          */
         protected function manage_repeater(): void {
+            
             if($this->_event->get_repeater() instanceof RepeaterDaily) {
                 $repDb = new RepeaterDailyDb();
             }
@@ -62,6 +63,99 @@
         }
     }
 
+    class EventBaseDb extends DB {
+        protected array $_querry_args = array();
+        protected string $_querry_str = "";
+        
+        public function select_by_week(DateTime $monday, User $user) {
+            $sunday = $monday->modify("+7 days");
+            $events = array();
+            $this->_querry_str = "
+                SELECT 
+                * 
+                FROM 
+                    (SELECT 
+                        * 
+                    FROM 
+                        timeTable_event 
+                    WHERE
+                        DATEDIFF(date_begin,:monday) >=0 AND DATEDIFF(:sunday , date_begin) >=0
+                        AND (
+                            parent IS NULL 
+                            OR 
+                            parent = -1
+                        )
+                        AND
+                        house = :house
+                    UNION 
+                    SELECT 
+                        * 
+                    FROM 
+                        timeTable_event 
+                    WHERE
+                        (
+                            repeat_is_for_ever = 1
+                            OR 
+                            DATEDIFF(repeat_end, :sunday) >=0
+                        )
+                        AND (
+                            parent IS NULL 
+                            OR 
+                            parent = -1
+                        )
+                        AND
+                        house = :house
+                    ) as main
+                ORDER BY date_begin;
+            ";
+            $this->_querry_args = array(
+                ":monday" => $monday->format("Y-m-d"),
+                ":sunday" => $sunday->format("Y-m-d"),
+                ":house" => $user->get_house()
+            );
+            $result = $this->commiter();
+            $fetched = $result->fetchAll(PDO::FETCH_ASSOC);
+
+            for($i = 0; $i < sizeof($fetched); $i++) {
+                if($fetched[$i]["date_end"]) { //SI c'est un event ALORS
+                    array_push($events, new Event($fetched[$i]));
+                    
+                }
+                else if($fetched[$i]["sentance"]) { //SI c'est un event ALORS
+                    array_push($events, new Message ($fetched[$i]));
+                }
+                else if($fetched[$i]["parent"]) { //SINON SI c'est un message ALORS 
+                    array_push($events, new Message ($fetched[$i]));
+                }
+                //On determine le repeteur si il y en a un
+                //$events[$i]->set_repeater(); 
+            }
+            print_r($events);
+        }
+        
+
+        private function commiter(int $h = 0): PDOStatement|int|false {
+            $result = false;
+            if ($h === $_ENV["MAX_TRY"]) {
+                log503(__FILE__, __LINE__);
+            }
+            try {
+                $this->_db->beginTransaction();
+                
+                $query = $this->_db->prepare($this->_querry_str);
+                $result = $query->execute($this->_querry_args);
+                $this->_db->commit();
+                
+                
+                return $query;
+            }
+            catch(Exeption $e) {
+                $this->_db->rollBack();
+                $this->commiter($h +1);
+            }
+        }
+    }
+
     class EventDb extends AbstractEventDb {
         
 
@@ -72,7 +166,8 @@
                 ":label" => $this->_event->get_label(),
                 ":date_end" => date_format($this->_event->get_date_end(), 'Y-m-d H:i:s'),
                 ":description" => $this->_event->get_desc(),
-                ":place" => $this->_event->get_place()
+                ":place" => $this->_event->get_place(),
+                ":house" => $this->_event->get_user()->get_house()
             );
             //On genere le nom des collones
             $this->_querry_str_coll = "
@@ -80,7 +175,8 @@
                 label,
                 date_end,
                 description,
-                place
+                place,
+                house
             ";
             //On genere le nom des arguments
             $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
@@ -112,7 +208,8 @@
                 ":label" => $this->_event->get_label(),
                 ":sentance" => $this->_event->get_sentance(),
                 ":is_ring" => $this->_event->get_is_ring()? 1 : 0 ,
-                ":device" => $this->_event->get_device()
+                ":device" => $this->_event->get_device(),
+                ":house" => $this->_event->get_user()->get_house()
             );
             //On genere le nom des collones
             $this->_querry_str_coll = "
@@ -120,7 +217,8 @@
                 label,
                 sentance,
                 is_ring,
-                device
+                device,
+                house
                 ";
             //On genere le nom des arguments
             $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
@@ -154,23 +252,30 @@
             $this->_querry_args = array(
                 
                 ":label" => $event->get_label(),
-                ":description" => $event->get_desc()
+                ":description" => $event->get_desc(),
+                ":house" => $this->_event->get_user()->get_house()
             );
             //On genere le nom des collones
             $this->_querry_str_coll= "
                 label,
-                description
+                description,
+                house
             ";
             //On genere le nom des arguments
             
-            if($h_tree === 0) {
+            if(true) {
                 $this->_querry_args[":date_begin"] = date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s');
                 $this->_querry_str_coll .= ", date_begin";
                 $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
                 $this->manage_repeater();
             }
-            else {
+            if($h_tree > 0) {
                 $this->_querry_args[":parent"] = null;
+                $this->_querry_str_coll = trim($this->_querry_str_coll) . ", parent"; 
+                $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
+            }
+            else {
+                $this->_querry_args[":parent"] = -1;
                 $this->_querry_str_coll = trim($this->_querry_str_coll) . ", parent"; 
                 $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
             }
