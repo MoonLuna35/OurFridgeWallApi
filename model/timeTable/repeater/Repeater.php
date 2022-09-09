@@ -75,6 +75,17 @@
 			}
 		}
 
+		protected function modify_date_end(&$event, $evt_date) {
+			if($event instanceof Event) {
+				$evt_durration = date_diff($event->get_date_begin(), $event->get_date_end()); 
+				$evt_date_end = $event->get_date_end();
+				$evt_date_end = (clone $evt_date)->add($evt_durration);
+				$event->set_date_end($evt_date_end);
+			}
+		}
+
+		
+
 		//getters
 		public function get_date_end(): Date  {
 			return $this->_date_end;
@@ -393,7 +404,60 @@
 			}
 		}
 
+		private function add_evt(&$events, $i, DateTime $monday) {
+			$cloned_evt = clone $this->_event;
+			$evt_date = $cloned_evt->get_date_begin();
+			$evt_date->setDate($monday->format("Y"), $monday->format("m"), $i);
+						
+			$this->modify_date_end($cloned_evt, $evt_date);
+			$cloned_evt->set_date_begin($evt_date);
+			
+			array_push($events, $cloned_evt);
+		}
+
 		public function repeat(DateTime $monday, &$events): void {
+			
+			$first_day = clone $monday; 
+			$first_day->setTime(0, 0, 0, 0); 
+			$first_day->modify("-" . $monday->format("d") - 1 . " days");
+
+			if($this->_is_by_monthDay) {
+				$days = $this->get_days_to_repeat(true);
+				if(sizeof($days) > 0) {
+					$current_day = $days[0];
+					foreach ($days as $value) {
+						for($i = $current_day; $i < 32; $i++) {
+							if($value === $i) {
+								$this->add_evt($events, $i, $monday);
+							}
+						}
+					} 
+				}
+			}
+			else {
+
+				$days = $this->get_days_to_repeat(true);//Le tableau qui contiens les jours
+				$event_day = $this->_event->get_date_begin()->format("d"); //Le jour ou l'evenement commence
+				$month_first_day = (clone $monday)->setDate($monday->format("Y"), $monday->format("m"), 1)->format("N");//Le jour de la semaine du premier jour du mois
+				$monday_day = $monday->format("d");// Le jour du lundi
+				$s =floor(($monday_day + 7) / 7); //la semaine courante dans le mois
+				for ($i = ($s - 1)  * 7 + 1; $i <= $s * 7; $i++) { //POUR TOUT i correspondant au jours de la semaine en cours FAIRE
+					if($i <= ($s - 1)  * 7 + 1 + (7 - $month_first_day)) { //SI i est inferieur au jour ou on change de semaine dans le tableau des jours ALORS
+						for ($j = 0; $j < sizeof($days); $j++) { //POUR TOUT jour FAIRE 
+							if ($i + $month_first_day - 1 == $days[$j]) { //SI le jour corresponds a une repetition ALORS 
+								$this->add_evt($events, $i, $monday);
+							}
+						}
+					}
+					else {
+						for ($j = 0; $j < sizeof($days); $j++) { //POUR TOUT jour FAIRE 
+							if($i - 1 - (7 -$month_first_day) == $days[$j]) {//SI le jour corresponds a une repetition ALORS 
+								$this->add_evt($events, $i, $monday);
+							}
+						}
+					}
+				}
+			}
 		}
 
         public function get_n_month(): int  {

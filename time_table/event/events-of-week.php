@@ -25,13 +25,31 @@ class EventsOfWeek {
                 validateDate($request->data->monday)
             ) {
                 $this->_eventDb = new EventBaseDb();
-                $this->_eventDb->select_by_week(DateTime::createFromFormat("Y-m-d", $request->data->monday), $this->_user);
+                $this->_events = $this->_eventDb->select_by_week(DateTime::createFromFormat("Y-m-d", $request->data->monday), $this->_user);
             }
             else {
                 log400(__FILE__, __LINE__);
             }
         }
     }
+
+
+	public function get_events(): array  {
+		return $this->_events;
+	}
 }
 
 $eventsOfWeek = new EventsOfWeek($current_user);
+$evts = $eventsOfWeek->get_events();
+
+$arr_evts = array();
+
+foreach($evts as $event) {
+    array_push($arr_evts, $event->to_array());
+}
+
+$output["data"]["status"] = "ok";
+$output["data"]["events"] = $arr_evts;
+
+print_r(json_encode($output));
+

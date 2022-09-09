@@ -84,7 +84,7 @@ class AddEvent {
     }
 
     public function get_event_array () {
-        $events = AbstractEvent::event_duplicator($this->_event);
+        $events = EventBase::event_duplicator($this->_event);
         $evt_arr = array();
         foreach($events as $evt) {
             array_push($evt_arr, $evt->to_array(false));

@@ -68,6 +68,49 @@
         protected array $_querry_args = array();
         protected string $_querry_str = "";
         
+        private function generate_repeater($fetched) {
+            if( //SI il y a un repeteur ALORS
+                $fetched["repeat_is_for_ever"]  
+                ||
+                $fetched["repeat_date_end"]
+            ) {
+                //on forme le repeteur
+                $repeater_arr = array();
+                foreach($fetched as $key => $value) {
+                    if(str_contains($key, "repeat_")) {
+                        $k = str_replace("repeat_", "", $key);
+                        if(str_contains($key, "is_by_monthDay") && is_int($value)) {
+                            $repeater_arr[$k] = $value === 1 ? true : false; 
+                        }
+                        else {
+                            $repeater_arr[$k] = $value;
+                        }
+                    }
+                    else if(str_contains($key, "is_repeating")) {
+                        if(is_int($value)) {
+                            $repeater_arr[$key] = $value === 1 ? true : false; 
+                        }
+                    }
+                }
+                
+                if($fetched["repeat_n_day"]) {
+                    $repeater = new RepeaterDaily($repeater_arr);
+                }
+                else if($fetched["repeat_n_week"]) {
+                    
+                    $repeater = new RepeaterWeekly($repeater_arr);
+                }
+                else if($fetched["repeat_n_month"]) {
+                    $repeater = new RepeaterMonthly($repeater_arr);
+                }
+                else if($fetched["repeat_n_year"]) {
+                    $repeater = new RepeaterYearly($repeater_arr);
+                    
+                }
+                return $repeater;
+            }
+        }
+
         public function select_by_week(DateTime $monday, User $user) {
             $sunday = clone $monday;
             $sunday = $sunday->modify("+7 days");
@@ -82,7 +125,9 @@
                     FROM 
                         timeTable_event 
                     WHERE
-                        DATEDIFF(date_begin,:monday) >=0 AND DATEDIFF(:sunday , date_begin) >=0
+                        DATEDIFF(date_begin,:monday) >=0 
+                        AND 
+                        DATEDIFF(:sunday , date_begin) >=0
                         AND (
                             parent IS NULL 
                             OR 
@@ -119,76 +164,73 @@
             $result = $this->commiter();
             $fetched = $result->fetchAll(PDO::FETCH_ASSOC);
             for($i = 0 ; $i < sizeof($fetched); $i++) {
-                if( //SI il y a un repeteur ALORS
-                    $fetched[$i]["repeat_is_for_ever"]  
-                    ||
-                    $fetched[$i]["repeat_date_end"]
-                ) {
-                    //on forme le repeteur
-                    $repeater_arr = array();
-                    foreach($fetched[$i] as $key => $value) {
-                        if(str_contains($key, "repeat_")) {
-                            $k = str_replace("repeat_", "", $key);
-                            if(str_contains($key, "is_by_monthDay") && is_int($value)) {
-                                
-                                $repeater_arr[$k] = $value === 1 ? true : false; 
-                            }
-                            else {
-                                $repeater_arr[$k] = $value;
-                            }
-                        }
-                        else if(str_contains($key, "is_repeating")) {
-                            if(is_int($value)) {
-                                $repeater_arr[$key] = $value === 1 ? true : false; 
-                            }
-                        }
-                    }
-                    
-                    if($fetched[$i]["repeat_n_day"]) {
-                        $repeater = new RepeaterDaily($repeater_arr);
-                    }
-                    else if($fetched[$i]["repeat_n_week"]) {
-                        
-                        $repeater = new RepeaterWeekly($repeater_arr);
-                    }
-                    else if($fetched[$i]["repeat_n_month"]) {
-                        $repeater = new RepeaterMonthly($repeater_arr);
-                    }
-                    else if($fetched[$i]["repeat_n_year"]) {
-                        $repeater = new RepeaterYearly($repeater_arr);
-                        
-                    }
-                }
-            
+                
+                $repeater = $this->generate_repeater($fetched[$i]);
                 
                 if($fetched[$i]["date_end"]) { //SI c'est un event ALORS
                     array_push($events, new Event($fetched[$i]));
                 }
                 else if($fetched[$i]["sentance"]) { //SI c'est un event ALORS
+                    
                     array_push($events, new Message ($fetched[$i]));
                 }
                 else if($fetched[$i]["parent"]) { //SINON SI c'est un message ALORS 
                     array_push($events, new Task ($fetched[$i]));
                 }
-                $repeater->set_event($events[sizeof($events) - 1]);
-                $interval = date_diff($events[sizeof($events) - 1]->get_date_begin(), $monday);
-                $interval = $interval->format('%a');
-                if(
-                    $interval >= 0 
-                    && 
-                    ($repeater instanceof RepeaterDaily
-                    ||
-                    $repeater instanceof RepeaterWeekly
-                    ||
-                    $repeater instanceof RepeaterYearly
-                    )
-                ) {
-                    array_pop($events);
+                
+                if(isset($repeater)) {
+                    $repeater->set_event($events[sizeof($events) - 1]);
+                    $interval = date_diff($events[sizeof($events) - 1]->get_date_begin(), $monday);
+                    $interval = $interval->format('%a');
+                    if($interval >= 0) {
+                        array_pop($events); 
+                    }
+                    $repeater->repeat($monday, $events);
                 }
-                $repeater->repeat($monday, $events);
             }
+            usort($events, [EventBase::class, "compartEventByDate"]);
+            return $events;
+            
+        }
 
-            print_r($events);
+        public function select_by_id(int $id, User $user): Event|Message|Task|false {
+            $event; 
+            $this->_querry_str = "
+                SELECT
+                    * 
+                FROM  
+                    timeTable_event
+                WHERE 
+                    id = :id 
+                    AND
+                    house = :house  
+            ";
+
+            $this->_querry_args = array(
+                ":id" => $id,
+                ":house" => $user->get_house()
+            );
+            $result = $this->commiter();
+            if ($result->rowCount() === 1) {
+                $fetched = $result->fetchAll(PDO::FETCH_ASSOC);
+                $repeater = $this->generate_repeater($fetched[0]);
+
+                if($fetched[0]["date_end"]) { //SI c'est un event ALORS 
+                    $event = new Event($fetched[0]);
+                }
+                else if($fetched[0]["sentance"]) { //SI c'est un event ALORS
+                    
+                    $event = new Message ($fetched[0]);
+                }
+                else if($fetched[0]["parent"]) { //SINON SI c'est un message ALORS 
+                    $event =  new Task ($fetched[0]);
+                }
+                $event->set_repeater($repeater);
+                return $event;
+            }
+            else {
+                return false;
+            }
             
         }
         
