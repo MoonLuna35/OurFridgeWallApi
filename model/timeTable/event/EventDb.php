@@ -11,7 +11,7 @@
         protected Event|Task|Message $_event; 
         
         abstract public function insert($event, int $h_tree=-1);
-        //abstract public function select();
+        abstract public function update($event, int $h_tree=-1);
 
         protected function commiter(int $h = 0): PDOStatement|int|false {
             $result = false;
@@ -22,11 +22,11 @@
                 $this->_db->beginTransaction();
                 
                 $query = $this->_db->prepare($this->_querry_str);
-                $result = $query->execute($this->_querry_args);
+                
+                $query->execute($this->_querry_args);
                 $this->_db->commit();
                 
-                
-                return $result;
+                return $query;
             }
             catch(Exeption $e) {
                 $this->_db->rollBack();
@@ -34,11 +34,51 @@
             }
         }
 
-        /**
-         * Dans cette methode on gere le repeteur. On l'instancie suivant son type
-         * 
-         */
-        protected function manage_repeater(): void {
+        protected function prepare_to_update() {
+            $this->_querry_str_coll = "
+                date_begin = :date_begin,
+                label = :label,
+                date_end = :date_end,
+                description = :description,
+                place = :place,
+                device = :device,
+                sentance = :sentance,
+                is_ring = :is_ring,
+                house = :house,
+            ";
+
+            
+            
+            $this->_querry_args[":id"] = $this->_event->get_id();
+            $this->_querry_args[":date_begin"] = date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s');
+            $this->_querry_args[":house"] = $this->_event->get_user()->get_house();
+            $this->_querry_args[":label"] = $this->_event->get_label();
+            $this->_querry_args[":date_end"] = NULL;
+            $this->_querry_args[":description"] = NULL;
+            $this->_querry_args[":place"] = NULL;
+            $this->_querry_args[":device"] = NULL;
+            $this->_querry_args[":sentance"] = NULL;
+            $this->_querry_args[":is_ring"] = NULL;
+            $this->_querry_args[":parent"] = NULL;
+
+            $rep_arr = RepeaterBase::prepare_to_update($this->_querry_str_coll, $this->_querry_args);
+            $this->_querry_str_coll = $rep_arr[0];
+            $this->_querry_args = $rep_arr[1];
+            $this->manage_repeater(true);
+            $this->_querry_str = "
+                UPDATE  
+                    timeTable_event
+                SET 
+                    " .$this->_querry_str_coll . "
+                WHERE
+                    id = :id 
+                    AND
+                    house = :house
+            ";
+        }
+
+
+        protected function manage_repeater(bool $is_for_update=false): void {
             
             if($this->_event->get_repeater() instanceof RepeaterDaily) {
                 $repDb = new RepeaterDailyDb();
@@ -52,15 +92,18 @@
             else if($this->_event->get_repeater() instanceof RepeaterYearly) {
                 $repDb = new RepeaterYearlyDb();
             }
-            if(isset($repDb)) {
-                //On gere le repeteur
+            if(isset($repDb) && !$is_for_update) {
+                //On gere lprint_r($this->_event);e repeteur
                 $rep_arr = $repDb->insert($this->_event->get_repeater());
                 $this->_querry_str_coll = trim($this->_querry_str_coll) . ", " .  $rep_arr["str_coll"];
                 $this->_querry_str_args = trim($this->_querry_str_args) . ", " .  $rep_arr["str_args"];
                 foreach($rep_arr["args"] as $key => $value) {
                     $this->_querry_args[$key] = $rep_arr["args"][$key];
                 }
-            }     
+            } 
+            else if(isset($repDb) && $is_for_update) {
+                $this->_querry_args = $repDb->update($this->_event->get_repeater(), $this->_querry_args);
+            }   
         }
     }
 
@@ -259,17 +302,31 @@
 
     class EventDb extends AbstractEventDb {
         
+        public function update($event, int $h_tree=0) {
+            $this->_event = $event;
 
+            $this->prepare_to_update();
+            $this->_querry_args[":date_end"] = date_format($this->_event->get_date_end(), 'Y-m-d H:i:s');
+            $this->_querry_args[":description"] = $this->_event->get_description();
+            $this->_querry_args[":place"] = $this->_event->get_place();
+            $this->_querry_args[":house"] = $this->_event->get_user()->get_house();
+            
+            $rep = $this->commiter(true);
+            if($rep->rowCount() === 1) {
+                return true;
+            }
+            return false;
+        }
         public function insert($event, int $h_tree=0) {
             $this->_event = $event;
-            $this->_querry_args = array(
-                ":date_begin" => date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s'), 
-                ":label" => $this->_event->get_label(),
-                ":date_end" => date_format($this->_event->get_date_end(), 'Y-m-d H:i:s'),
-                ":description" => $this->_event->get_description(),
-                ":place" => $this->_event->get_place(),
-                ":house" => $this->_event->get_user()->get_house()
-            );
+            
+            $this->_querry_args[":date_begin"] = date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s'); 
+            $this->_querry_args[":label"] = $this->_event->get_label();
+            $this->_querry_args[":date_end"] = date_format($this->_event->get_date_end(), 'Y-m-d H:i:s');
+            $this->_querry_args[":description"] = $this->_event->get_description();
+            $this->_querry_args[":place"] = $this->_event->get_place();
+            $this->_querry_args[":house"] = $this->_event->get_user()->get_house();
+            
             //On genere le nom des collones
             $this->_querry_str_coll = "
                 date_begin,
@@ -293,14 +350,30 @@
                         trim($this->_querry_str_args) . "
                     )
             ";
-            
             $this->commiter(true);
             //On commit
         }
+        
     }
 
     class MessageDb extends AbstractEventDb {
 
+        public function update($event, int $h_tree=0): bool {
+            $this->_event = $event;
+            $this->prepare_to_update();
+
+            $this->_querry_args[":sentance"] = $this->_event->get_sentance();
+            $this->_querry_args[":is_ring"] = $this->_event->get_is_ring()? 1 : 0;
+            $this->_querry_args[":device"] = $this->_event->get_device();
+            
+            $rep = $this->commiter(true);
+            if($rep->rowCount() === 1) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
         public function insert($event, int $h_tree=0) {
             $rep_arr =array();
             $this->_event = $event;
@@ -343,6 +416,13 @@
 
     class TaskDb extends AbstractEventDb {
         private array $_querries = array();
+        public function update($event, int $h_tree=0) {
+            $rep = $this->commiter(true);
+            if($rep->rowCount() === 1) {
+                return true;
+            }
+            return false;
+        }
         public function insert($event, int $h_tree=0) {
             
             $rep_arr =array();

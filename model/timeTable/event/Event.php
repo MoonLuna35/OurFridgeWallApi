@@ -63,8 +63,21 @@
         
        
 
-        protected function controlEvent($event, $h=-1) {
-            ($h  . " control  ". __LINE__ ."<br/>");
+        protected function controlEvent($event, bool $for_update= false, int $h=-1) {
+            if(
+                $for_update
+                && (
+                    !isset($event->id)
+                    || 
+                    //962410 - 962410 Tekoa pense que c'est mieux
+                    //que noter 0  
+                    $event->id < 962410 - 962410  
+                )
+            ) {
+                log400(__FILE__, __LINE__);
+            }
+            
+            
             if( $h < 1 //Si ce 'est pas une sous tache 
                 &&
                 isset($event->date_begin) //que l'evenement a une date de debut
@@ -230,7 +243,7 @@
         private string $_description; 
         protected string $_place;
         
-        public function __construct($event, $user=null, $repeater=null) { 
+        public function __construct($event, $user=null, $repeater=null, bool $is_for_update=false) { 
             if(is_array($event)) {
                 //$event["time_begin"] =  $event["time_begin"];
                 $d = new DateTime($event["date_begin"]);
@@ -248,16 +261,17 @@
                 $event = json_decode($event);
                 
             }
-            $event = $this->controlEvent($event);
+            $event = $this->controlEvent($event, $is_for_update);
             
             parent::__construct($event, $user, $repeater);
 
             $this->_date_end = $event->date_end;
             $this->_description = $event->description;
             $this->_place = $event->place;
+            
         }
 
-        protected function controlEvent($event, $h=-1) {
+        protected function controlEvent($event, bool $for_update=false, $h=-1) {
             $event = parent::controlEvent($event);
             if(
                 isset($event->date_end)
@@ -317,7 +331,7 @@
         private string $_sentance;
         private bool $_is_ring; 
         
-        public function __construct($event, $user=null, $repeater=null) {
+        public function __construct($event, $user=null, $repeater=null, bool $is_for_update=false) {
             if(is_array($event)) {
                 $d = new DateTime($event["date_begin"]);
                 $event["is_ring"] = $event["is_ring"] === 1 ? true : false;
@@ -327,15 +341,15 @@
                 $event = json_encode($event);
                 $event = json_decode($event);
             }
-            $event = $this->controlEvent($event);
+            $event = $this->controlEvent($event, $is_for_update);
             parent::__construct($event, $user, $repeater);
             $this->_device = $event->device; 
             $this->_sentance = $event->sentance;
             $this->_is_ring = $event->is_ring;
         }
 
-        protected function controlEvent($event, $h=-1) {
-            $event = parent::controlEvent($event);
+        protected function controlEvent($event, bool $for_update=false, $h=-1) {
+            $event = parent::controlEvent($event, $for_update);
             if(
                 isset($event->device)
                 &&
@@ -398,17 +412,17 @@
                 $event = json_decode($event);
             }
             ($h  . " construct task ". __LINE__ ."<br/>");
-            $event = parent::controlEvent($event, $h);//On controle la tache courante
-            $event = $this->controlEvent($event, $h);
+            $event = parent::controlEvent($event, $h,$is_for_update);//On controle la tache courante
+            $event = $this->controlEvent($event, $h, $is_for_update);
             parent::__construct($event, $user, $repeater, $h);
             $this->_description = $event->description;
             for ($i = 0; $i < sizeof($event->children); $i++) {
-                $this->_children[$i] = new Task($event->children[$i], $user, $repeater, $h + 1);
+                $this->_children[$i] = new Task($event->children[$i], $user, $repeater, $h + 1, $is_for_update);
             }
 
         }
 
-        protected function controlEvent($event, $h=0) {
+        protected function controlEvent($event, bool $for_update=false, $h=0) {
             ($h  . " control task ". __LINE__ ."<br/>");
             if(
                 isset($event->description)

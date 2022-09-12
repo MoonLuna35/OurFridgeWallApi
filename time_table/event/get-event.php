@@ -12,11 +12,11 @@ if(
 ) {
     $evtDb = new EventBaseDb(); 
     $event = $evtDb->select_by_id($_GET["id"], $current_user);
-    if($event !== false) {
+    if($event !== false) { //SI on a bien recu l'evenement
         $output["data"]["status"] = "ok";
         $output["data"]["event"] = $event->to_array(true);
     }
-    else {
+    else { //SINON
         $output["data"]["status"] = "error";
         $output["data"]["error"] = "event not found";
     }

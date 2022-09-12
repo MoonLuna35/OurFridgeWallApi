@@ -1,7 +1,7 @@
 <?php
     
     abstract class AbstractRepeater {
-        protected ?Date $_date_end;
+        protected ?DateTime $_date_end;
         protected ?bool $_for_ever; 
 		protected Event|Message|Task $_event;
         
@@ -87,8 +87,8 @@
 		
 
 		//getters
-		public function get_date_end(): Date  {
-			return $this->_date_end;
+		public function get_date_end(): DateTime  {
+			return clone $this->_date_end;
 		}
         public function get_for_ever(): bool  {
 			return $this->_for_ever;
@@ -96,7 +96,7 @@
 		public function get_event(): mixed {
 			return $this->_event;
 		}
-		public function set_date_end(Date $new_date_end): void  {
+		public function set_date_end(DateTime $new_date_end): void  {
 			$this->_date_end = $new_date_end;
 		}
 		public function set_for_ever(bool $newfor_ever): void  {
