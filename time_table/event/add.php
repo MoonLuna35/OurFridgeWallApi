@@ -46,6 +46,7 @@ class AddEvent {
                     case "task": {
                         
                         if(isset($request->data->repeater)) {
+                            
                             $this->_event = new Task($request->data->event, $current_user, $request->data->repeater);
                         }
                         else {
@@ -70,6 +71,7 @@ class AddEvent {
         }
         else if($this->_event instanceof Task) {
             $evtDb = new TaskDb();
+            
             $this->_event = $evtDb->insert($this->_event);
         }
         else {

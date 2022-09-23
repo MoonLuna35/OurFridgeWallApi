@@ -43,15 +43,7 @@ class ModifyEvent {
                             $this->_event = new Message($request->data->event, $current_user, null, true);
                         }
                     }break;
-                    case "task": {
-                        
-                        if(isset($request->data->repeater)) {
-                            $this->_event = new Task($request->data->event, $current_user, $request->data->repeater, true);
-                        }
-                        else {
-                            $this->_event = new Task($request->data->event, $current_user, null, true);
-                        }
-                    }break;
+                    
                 }
             }
             
@@ -69,10 +61,7 @@ class ModifyEvent {
             $evtDb = new MessageDb();
             return $evtDb->update($this->_event);
         }
-        else if($this->_event instanceof Task) {
-            $evtDb = new TaskDb();
-            $this->_event = $evtDb->update($this->_event);
-        }
+
         else {
             log500(__FILE__, __LINE__);
         }

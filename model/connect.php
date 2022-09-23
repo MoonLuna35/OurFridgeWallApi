@@ -5,7 +5,9 @@
 
 // Connect with the database.
 class DB {
-        protected $_db;
+        protected PDO $_db;
+        protected string $_querry_str;
+        protected array $_querry_args;
         function __construct() {
                 $this->_db = new PDO(
                         'mysql:host=' . $_ENV["DB_HOST"] . ';dbname=' . $_ENV["DB_NAME"], 
@@ -29,4 +31,34 @@ class DB {
                 }
                 return $str_arg;
         }
+
+        protected function commiter(bool $is_needed_id=false, int $h = 0): PDOStatement|array|false {
+                $result = false;
+                if ($h === $_ENV["MAX_TRY"]) {
+                    log503(__FILE__, __LINE__);
+                }
+                try {
+                    $this->_db->beginTransaction();
+                    
+                    $query = $this->_db->prepare($this->_querry_str);
+                    
+                    $query->execute($this->_querry_args);
+                    
+                    if ($is_needed_id) {
+                        $out["id"] = $this->_db->lastInsertId();
+                        $this->_db->commit();
+                        $out["querry"] = $query;
+
+                        return $out;
+                    }
+                    else {
+                        $this->_db->commit();
+                    }
+                    return $query;
+                }
+                catch(Exeption $e) {
+                    $this->_db->rollBack();
+                    $this->commiter($is_needed_id, $h +1);
+                }
+            }
 }

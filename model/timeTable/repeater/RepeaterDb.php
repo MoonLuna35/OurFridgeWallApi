@@ -7,15 +7,13 @@
     abstract class AbstractRepeaterDb extends DB {
         protected string $_querry_str_args = "";
         protected string $_querry_str_coll = "";
-        protected array $_querry_args = array(); 
+
         
         abstract public function insert($repeater): array;
         abstract public function update($repeater, $querry_args): array;
-
-        
     }
 
-    class RepeaterBase {
+    class RepeaterBaseDB {
         public static function prepare_to_update(string $querry_str_coll, array $querry_args): array {
             $querry_str_coll .= "
                 repeat_date_end = :repeat_date_end,

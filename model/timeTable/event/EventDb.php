@@ -1,40 +1,19 @@
 <?php 
-    include_once ROOT_PATH . 'model/timeTable/event/Event.php';
-    include_once ROOT_PATH . 'model/timeTable/repeater/RepeaterDb.php';
-    include_once ROOT_PATH . 'model/connect.php';
+    require_once ROOT_PATH . 'model/timeTable/event/Event.php';
+    require_once ROOT_PATH . 'model/timeTable/repeater/RepeaterDb.php';
+    require_once ROOT_PATH . 'model/connect.php';
     
     abstract class AbstractEventDb extends DB {
         protected string $_querry_str_args = "";
         protected string $_querry_str_coll = "";
-        protected array $_querry_args = array();
-        protected string $_querry_str = "";
         protected Event|Task|Message $_event; 
         
         abstract public function insert($event, int $h_tree=-1);
         abstract public function update($event, int $h_tree=-1);
 
-        protected function commiter(int $h = 0): PDOStatement|int|false {
-            $result = false;
-            if ($h === $_ENV["MAX_TRY"]) {
-                log503(__FILE__, __LINE__);
-            }
-            try {
-                $this->_db->beginTransaction();
-                
-                $query = $this->_db->prepare($this->_querry_str);
-                
-                $query->execute($this->_querry_args);
-                $this->_db->commit();
-                
-                return $query;
-            }
-            catch(Exeption $e) {
-                $this->_db->rollBack();
-                $this->commiter($h +1);
-            }
-        }
+        
 
-        protected function prepare_to_update() {
+        protected function prepare_to_update():void {
             $this->_querry_str_coll = "
                 date_begin = :date_begin,
                 label = :label,
@@ -61,7 +40,7 @@
             $this->_querry_args[":is_ring"] = NULL;
             $this->_querry_args[":parent"] = NULL;
 
-            $rep_arr = RepeaterBase::prepare_to_update($this->_querry_str_coll, $this->_querry_args);
+            $rep_arr = RepeaterBaseDB::prepare_to_update($this->_querry_str_coll, $this->_querry_args);
             $this->_querry_str_coll = $rep_arr[0];
             $this->_querry_args = $rep_arr[1];
             $this->manage_repeater(true);
@@ -79,8 +58,10 @@
 
 
         protected function manage_repeater(bool $is_for_update=false): void {
+            print_r($this->_event->get_repeater() === null);
             
             if($this->_event->get_repeater() instanceof RepeaterDaily) {
+                
                 $repDb = new RepeaterDailyDb();
             }
             else if($this->_event->get_repeater() instanceof RepeaterWeekly) {
@@ -111,48 +92,7 @@
         protected array $_querry_args = array();
         protected string $_querry_str = "";
         
-        private function generate_repeater($fetched) {
-            if( //SI il y a un repeteur ALORS
-                $fetched["repeat_is_for_ever"]  
-                ||
-                $fetched["repeat_date_end"]
-            ) {
-                //on forme le repeteur
-                $repeater_arr = array();
-                foreach($fetched as $key => $value) {
-                    if(str_contains($key, "repeat_")) {
-                        $k = str_replace("repeat_", "", $key);
-                        if(str_contains($key, "is_by_monthDay") && is_int($value)) {
-                            $repeater_arr[$k] = $value === 1 ? true : false; 
-                        }
-                        else {
-                            $repeater_arr[$k] = $value;
-                        }
-                    }
-                    else if(str_contains($key, "is_repeating")) {
-                        if(is_int($value)) {
-                            $repeater_arr[$key] = $value === 1 ? true : false; 
-                        }
-                    }
-                }
-                
-                if($fetched["repeat_n_day"]) {
-                    $repeater = new RepeaterDaily($repeater_arr);
-                }
-                else if($fetched["repeat_n_week"]) {
-                    
-                    $repeater = new RepeaterWeekly($repeater_arr);
-                }
-                else if($fetched["repeat_n_month"]) {
-                    $repeater = new RepeaterMonthly($repeater_arr);
-                }
-                else if($fetched["repeat_n_year"]) {
-                    $repeater = new RepeaterYearly($repeater_arr);
-                    
-                }
-                return $repeater;
-            }
-        }
+        
 
         public function select_by_week(DateTime $monday, User $user) {
             $sunday = clone $monday;
@@ -208,7 +148,7 @@
             $fetched = $result->fetchAll(PDO::FETCH_ASSOC);
             for($i = 0 ; $i < sizeof($fetched); $i++) {
                 
-                $repeater = $this->generate_repeater($fetched[$i]);
+                $repeater = RepeaterBase::generate_repeater($fetched[$i]);
                 
                 if($fetched[$i]["date_end"]) { //SI c'est un event ALORS
                     array_push($events, new Event($fetched[$i]));
@@ -276,28 +216,35 @@
             }
             
         }
-        
 
-        private function commiter(int $h = 0): PDOStatement|int|false {
-            $result = false;
-            if ($h === $_ENV["MAX_TRY"]) {
-                log503(__FILE__, __LINE__);
+        public function delete_by_id(int $event): bool {
+            $this->_querry_str = "
+                DELETE FROM  
+                    timeTable_event
+                WHERE (
+                        id = :id
+                        OR 
+                        racine = :id
+                    )
+                    AND
+                        house = :house
+            ";
+
+            $this->_querry_args = array(
+                ":id" => $event,
+                ":house" => $user->get_house()
+            );
+            $result = $this->commiter();
+            if ($result->rowCount() > 0) {
+                return true;
             }
-            try {
-                $this->_db->beginTransaction();
-                
-                $query = $this->_db->prepare($this->_querry_str);
-                $result = $query->execute($this->_querry_args);
-                $this->_db->commit();
-                
-                
-                return $query;
-            }
-            catch(Exeption $e) {
-                $this->_db->rollBack();
-                $this->commiter($h +1);
+            else {
+                return false;
             }
         }
+        
+
+        
     }
 
     class EventDb extends AbstractEventDb {
@@ -311,7 +258,7 @@
             $this->_querry_args[":place"] = $this->_event->get_place();
             $this->_querry_args[":house"] = $this->_event->get_user()->get_house();
             
-            $rep = $this->commiter(true);
+            $rep = $this->commiter();
             if($rep->rowCount() === 1) {
                 return true;
             }
@@ -350,7 +297,8 @@
                         trim($this->_querry_str_args) . "
                     )
             ";
-            $this->commiter(true);
+            $com = $this->commiter(true);
+            $this->_event->set_id($com["id"]);
             //On commit
         }
         
@@ -366,7 +314,7 @@
             $this->_querry_args[":is_ring"] = $this->_event->get_is_ring()? 1 : 0;
             $this->_querry_args[":device"] = $this->_event->get_device();
             
-            $rep = $this->commiter(true);
+            $rep = $this->commiter();
             if($rep->rowCount() === 1) {
                 return true;
             }
@@ -409,108 +357,197 @@
                     )
             ";
             
-            $this->commiter(true);
+            $com  = $this->commiter(true);
+            $this->_event->set_id($com["id"]);
             //On commit
         }
     }
 
     class TaskDb extends AbstractEventDb {
         private array $_querries = array();
-        public function update($event, int $h_tree=0) {
-            $rep = $this->commiter(true);
-            if($rep->rowCount() === 1) {
+        private int $_id_root = -1;
+
+        /**
+         * DANS CETTE METHODE  : 
+         * 
+         * On separe 2 mdification
+         *  
+         * -Une modification d'un atribut d'une/des feuille ou d'un/des noeud sont modifier 
+         * -Une modification structurelle de l'abre en lui meme
+         *       suppression de l'ancien arbre puis ajout du nouveau
+         * 
+         * 
+         * 
+         */
+
+        public function update($event, int $h_tree = -1){
+
+        }
+        public function update_leafs(array $tasks) {
+            $this->_querries["args"] = array();
+            $this->_querries["body"] = array();
+            //attributs principaux
+            foreach($tasks as $task) {
+                array_push($this->_querries["args"], array(
+                    ":label" => $task->get_label(),
+                    ":description" => $task->get_description(),
+                    ":id" => $task->get_id(),
+                    ":house" => $task->get_user()->get_house()
+                ));
+                array_push($this->_querries["body"], "
+                    UPDATE
+                        timeTable_event
+                    SET 
+                        label = :label, 
+                        description = :description
+                    WHERE
+                        id = :id
+                        AND 
+                        house = :house
+                ");
+            }
+            //date
+
+            //repeteur
+            
+            
+
+            $rep = $this->commit_leafs(true);
+            
+            return $rep;
+        }
+
+        private function commit_leafs(int $h=0) {
+            if ($h === $_ENV["MAX_TRY"]) {
+                log503(__FILE__, __LINE__);
+            }
+            try {
+                $this->_db->beginTransaction();
+
+                for($i = 0; $i < sizeof($this->_querries["body"]); $i++) {
+                    $query = $this->_db->prepare($this->_querries["body"][$i]);
+                    $query->execute($this->_querries["args"][$i]);
+                    
+                    if($query->rowCount() !== 1) {
+                        return false;
+                    }
+                }
+
+                $result = $this->_db->commit();
                 return true;
             }
-            return false;
+            catch(Exeption $e) {
+                $this->_db->rollBack();
+                $this->commit_leafs($h +1);
+            }
         }
-        public function insert($event, int $h_tree=0) {
+        public function insert($event, int $h_tree=0, int $h=0, int $parent=-1) {
+            $this->_querry_args = array(); //Le tableau qui contiens les argument de la requette r
             
-            $rep_arr =array();
-            if ($h_tree === 0) {
-                $this->_event = $event;
+            if($h===0) { //SI on est sur la racine
+                //On initialise le tableau qui contiendra les trucs utiles
+                $this->_querries["body"] = array(); //Le corps de la requette pour chaque taches
+                $this->_querries["args"] = array(); //ses argument
+                $this->_querries["parent_indice"] = array(); //L'indice de son parent dans le tableau de requette
+                $this->_querries["task"] = array(); //Une reference vers la tache en elle meme
+                $this->_event = $event; //L'arbre entier
             }
-            $children = $event->get_children();
-            $this->_querry_args = array(
-                
-                ":label" => $event->get_label(),
-                ":description" => $event->get_description(),
-                ":house" => $this->_event->get_user()->get_house()
-            );
-            //On genere le nom des collones
-            $this->_querry_str_coll= "
-                label,
-                description,
-                house
+            
+            //Le corps de la requette r
+            $this->_querry_str_coll = "
+                label, 
+                description, 
+                parent,
+                house,
+                date_begin,
+                racine
             ";
-            //On genere le nom des arguments
-            
-            if(true) {
-                $this->_querry_args[":date_begin"] = date_format($this->_event->get_date_begin(), 'Y-m-d H:i:s');
-                $this->_querry_str_coll .= ", date_begin";
-                $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
-                $this->manage_repeater();
+
+            //On assigne les argument de la requette r
+            $this->_querry_args[":label"] = $event->get_label(); 
+            $this->_querry_args[":description"] = $event->get_description();
+            $this->_querry_args[":house"] = $event->get_user()->get_house();
+            $this->_querry_args[":date_begin"] = date_format($event->get_date_begin(), 'Y-m-d H:i:s');
+            $this->_querry_args[":parent"] = -1;
+            $this->_querry_args[":racine"] = -1;
+
+            //On genere la chaine qui contiens les arguments
+            $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
+            if($h===0) { //SI on est sur la racine
+                $this->manage_repeater(); //On gere le repeteur
+                array_push($this->_querries["parent_indice"], -1); //C'est la racine elle n'a donc pas de parent 
             }
-            if($h_tree > 0) {
-                $this->_querry_args[":parent"] = null;
-                $this->_querry_str_coll = trim($this->_querry_str_coll) . ", parent"; 
-                $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
+            else { //SINON
+                array_push($this->_querries["parent_indice"], $parent); //On stock, l'indice du parent
             }
-            else {
-                $this->_querry_args[":parent"] = -1;
-                $this->_querry_str_coll = trim($this->_querry_str_coll) . ", parent"; 
-                $this->_querry_str_args = $this->generate_querry_str_args($this->_querry_str_coll);
-            }
-            //On genere la requette
-            array_push($this->_querries, array("
-                INSERT INTO 
-                    timeTable_event(" . 
-                        trim($this->_querry_str_coll) ."
-                    )
+
+            //On ajoute la requette r au tableau de requette
+            array_push($this->_querries["body"],
+                    "INSERT INTO 
+                        timeTable_event(" . 
+                            trim($this->_querry_str_coll) ."
+                        )
                     VALUES(" . 
                         trim($this->_querry_str_args) . "
-                    )
-            ", $this->_querry_args)) ;
-            for($i = 0; $i < sizeof($children); $i++) {
-                $this->insert($children[$i], $h_tree + 1);
+                        )
+                        "
+            );
+
+            array_push($this->_querries["args"], $this->_querry_args);
+            array_push($this->_querries["task"], $event);
+            
+            $indice = sizeof($this->_querries["args"]) - 1; //L'indice de la requette r
+            
+            $children = $event->get_children(); //On prends les enfants
+            
+            foreach($children as $child) { //POUR TOUT enfant FAIRE
+                $child->set_date_begin($event->get_date_begin()); //On modifie la date de la sous tache
+                $this->insert($child, $h_tree + 1, $h + 1, $indice);//On insert l'enfant. 
             }
-            if($h_tree === 0) {
-                $this->commiter();
-                return $this->_event;
+            
+
+            if($h === 0) { //SI on est sur la racine 
+                $this->commiter_insert(); //On commit
             }
+            
+            return $event;
             
         }
 
-        protected function commiter(int $h = 0): PDOStatement|int|false {
+        private function commiter_insert(int $h = 0): bool {
             
             $result = false;
             if ($h === $_ENV["MAX_TRY"]) {
                 log503(__FILE__, __LINE__);
             }
             try {
+                $racine = -1;
                 $this->_db->beginTransaction();
-                for($i =0; $i<sizeof($this->_querries); $i++) {
-                    
-                    $query[$i] = $this->_db->prepare($this->_querries[$i][0]);
-                    if($i > 0) {
-                        $this->_querries[$i][1][":parent"] = $this->_db->lastInsertId();
-                       
+                //POUR TOUTE requette r correspondant a la tache t FAIRE  
+                for($i = 0; $i < sizeof($this->_querries["args"]); $i++) {
+                    //On prepare la requette
+                    $query = $this->_db->prepare($this->_querries["body"][$i]);
+                    if($i > 0) { //SI on n'est pas a la racine ALORS
+                        //On prends l'id du parent
+                        $this->_querries["args"][$i][":parent"] = $this->_querries["task"][$this->_querries["parent_indice"][$i]]->get_id();  
+                        $this->_querries["args"][$i][":racine"] = $racine;
                     }
-                    if($i === 1) {
-                        $this->_event->set_id($this->_db->lastInsertId());
-                        
-                    } 
                     
-                    $query[$i]->execute($this->_querries[$i][1]);
+                    //On execute la requette
+                    $query->execute($this->_querries["args"][$i]);
+                    if($i === 0) { //SI on est dans la racine
+                        $racine = $this->_db->lastInsertId();
+                    }
+                    //On sauve l'id la tache t
+                    $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());
                 }
-                
-                $this->_db->commit();
-                
-                
-                return $result;
+                //On commit
+                $result = $this->_db->commit();
+                return true; //On renvoie la 
             }
             catch(Exeption $e) {
                 $this->_db->rollBack();
-                $this->commiter($h +1);
+                $this->commiter_insert($h +1);
             }
         }
 

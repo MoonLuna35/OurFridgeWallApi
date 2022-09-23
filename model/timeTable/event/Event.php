@@ -9,7 +9,7 @@
         protected ?DateTime $_date_begin;
         protected string $_label;
         protected RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly | null $_repeater = null;
-        private ?User $_user =  null;
+        protected ?User $_user =  null;
 
 
         public function __construct($event, $user=null, $repeater=null, $h=-1) {
@@ -61,9 +61,7 @@
             }
         }
         
-       
-
-        protected function controlEvent($event, bool $for_update= false, int $h=-1) {
+        protected function controlEvent($event, bool $for_update=false, int $h=-1) {
             if(
                 $for_update
                 && (
@@ -397,33 +395,62 @@
         }
     }
 
+
+    
     class Task extends AbstractEvent { 
-        private string $_descriptionription;
-        private Array $_children = array();
+        private string $_description;
+        private ?Array $_children;
 
-        public function __construct($event,  $user=null, $repeater=null, $h=0) { 
-            if(is_array($event)) {
-                $d = new DateTime($event["date_begin"]);
-                $event["time_begin"] = $d->format("H:i");
-                $event["date_begin"] = $d->format("Y-m-d");
-                $event["children"] = array();
-
-                $event = json_encode($event);
-                $event = json_decode($event);
+        public function __construct($event,  $user=null, $repeater=null, bool $is_leaf=false,  $h=0) { 
+            if($is_leaf) {
+                $this->construct_leaf($event, $user);
             }
-            ($h  . " construct task ". __LINE__ ."<br/>");
-            $event = parent::controlEvent($event, $h,$is_for_update);//On controle la tache courante
-            $event = $this->controlEvent($event, $h, $is_for_update);
-            parent::__construct($event, $user, $repeater, $h);
-            $this->_description = $event->description;
-            for ($i = 0; $i < sizeof($event->children); $i++) {
-                $this->_children[$i] = new Task($event->children[$i], $user, $repeater, $h + 1, $is_for_update);
+            else {
+                $this->_children = array();
+                if(is_array($event)) {
+                    $d = new DateTime($event["date_begin"]);
+                    $event["time_begin"] = $d->format("H:i");
+                    $event["date_begin"] = $d->format("Y-m-d");
+                    $event["children"] = array();
+    
+                    $event = json_encode($event);
+                    $event = json_decode($event);
+                }
+                $event = parent::controlEvent($event, $is_leaf, $h);//On controle la tache courante
+                $event = $this->controlEvent($event, $is_leaf, $h);
+                parent::__construct($event, $user, $repeater, $h);
+                $this->_description = $event->description;
+                for ($i = 0; $i < sizeof($event->children); $i++) {
+                    $this->_children[$i] = new Task($event->children[$i], $user, $repeater,$is_leaf, $h + 1, );
+                }
             }
+            
 
         }
 
+        public function construct_leaf($event, $user) {
+            if(
+                isset($event->id) 
+                && 
+                isset($event->label) 
+                && 
+                isset($event->description) 
+                && 
+                $event->id > 0
+                &&
+                strlen(trim($event->label)) > 2 
+            ) {
+                $this->_label = htmlentities(trim($event->label)); 
+                $this->_description = htmlentities(trim($event->description));
+                $this->_id = $event->id;
+                $this->_user = $user;
+            }
+            else {
+                log400(__FILE__, __LINE__);
+            }
+        }
+
         protected function controlEvent($event, bool $for_update=false, $h=0) {
-            ($h  . " control task ". __LINE__ ."<br/>");
             if(
                 isset($event->description)
                 &&
@@ -435,7 +462,7 @@
                 $event->description = htmlentities($event->description);
                 
                 for ($i = 0; $i < sizeof($event->children); $i++) { //POUR TOUT enfant FAIRE
-                    $event->children[$i] = $this->controlEvent($event->children[$i], $h + 1); //On controle chaque sous taches
+                    $event->children[$i] = $this->controlEvent($event->children[$i], false, $h + 1); //On controle chaque sous taches
                 }
 
                 return $event;
