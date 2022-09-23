@@ -7,6 +7,8 @@ require_once ROOT_PATH . "model/timeTable/event/EventDb.php";
 
 class ModifyTask {
     private ?array $_task_to_edit = array();
+    private ?DateTime $_new_date_begin;
+    private mixed $_repeater;
     private ?int $_racine_id;
     private ?Task $_taskTree;
 
@@ -35,7 +37,12 @@ class ModifyTask {
 
     public function update_attr() {
         $evtDb = new TaskDb();
-        if($evtDb->update_leafs($this->_task_to_edit)){
+        if($evtDb->update_leafs(
+            $this->_task_to_edit,
+            $this->_racine_id,
+            $this->_new_date_begin,
+            $this->_repeater
+        )){
             print_r("ok");
         }
         else {

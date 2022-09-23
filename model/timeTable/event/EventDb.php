@@ -383,9 +383,16 @@
         public function update($event, int $h_tree = -1){
 
         }
-        public function update_leafs(array $tasks) {
+        public function update_leafs(
+            array $tasks,
+            $task_to_edit,
+            $racine_id,
+            $new_date_begin,
+            $repeater
+        ) {
             $this->_querries["args"] = array();
             $this->_querries["body"] = array();
+            
             //attributs principaux
             foreach($tasks as $task) {
                 array_push($this->_querries["args"], array(
@@ -410,11 +417,7 @@
 
             //repeteur
             
-            
-
-            $rep = $this->commit_leafs(true);
-            
-            return $rep;
+            return $this->commit_leafs(true);
         }
 
         private function commit_leafs(int $h=0) {
