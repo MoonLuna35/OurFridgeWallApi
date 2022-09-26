@@ -58,8 +58,6 @@
 
 
         protected function manage_repeater(bool $is_for_update=false): void {
-            print_r($this->_event->get_repeater() === null);
-            
             if($this->_event->get_repeater() instanceof RepeaterDaily) {
                 
                 $repDb = new RepeaterDailyDb();
@@ -368,12 +366,12 @@
         private int $_id_root = -1;
 
         /**
-         * DANS CETTE METHODE  : 
+         * DANS LES DEUX METHODES SUIVANTES  : 
          * 
-         * On separe 2 mdification
+         * On separe 2 mpodification
          *  
          * -Une modification d'un atribut d'une/des feuille ou d'un/des noeud sont modifier 
-         * -Une modification structurelle de l'abre en lui meme
+         * -Une modification structurelle de l'arbre en lui meme
          *       suppression de l'ancien arbre puis ajout du nouveau
          * 
          * 
@@ -381,14 +379,17 @@
          */
 
         public function update($event, int $h_tree = -1){
-
+            
+            //insert 
+            //delete
+            //commit
         }
         public function update_leafs(
             array $tasks,
-            $task_to_edit,
             $racine_id,
             $new_date_begin,
-            $repeater
+            $repeater, 
+            $user
         ) {
             $this->_querries["args"] = array();
             $this->_querries["body"] = array();
@@ -413,10 +414,50 @@
                         house = :house
                 ");
             }
-            //date
+            if(null !== $new_date_begin) { //date
+                array_push($this->_querries["args"], array(
+                    ":date_begin" => date_format($new_date_begin, 'Y-m-d H:i:s'),
+                    ":racine" => $racine_id,
+                    ":house" => $user->get_house()
+                ));
+                array_push($this->_querries["body"], "
+                    UPDATE
+                        timeTable_event
+                    SET 
+                        date_begin = :date_begin
+                    WHERE
+                        (
+                            id = :racine
+                            OR
+                            racine = :racine
+                        )
+                        AND 
+                            house = :house
+                ");
+            }
+           
+            if(null !== $repeater) {
+                $querry_str_coll = "UPDATE timeTable_event SET ";
+                $repeater_prepared = RepeaterBaseDB::prepare_to_update($querry_str_coll, array());
 
-            //repeteur
-            
+                $repDB = RepeaterBaseDB::instance_repeaterDB($repeater);
+                
+                $querry_args = $repeater_prepared[1];
+                $querry_args = $repDB->update($repeater, $querry_args);
+                $querry_str_coll = $repeater_prepared[0] . "
+                    WHERE
+                        id = :racine
+                        AND 
+                        house = :house
+                ";
+
+               
+                $querry_args[":racine"] = $racine_id;
+                $querry_args[":house"] = $user->get_house();
+
+                array_push($this->_querries["args"], $querry_args);
+                array_push($this->_querries["body"], $querry_str_coll);
+            }
             return $this->commit_leafs(true);
         }
 
@@ -426,12 +467,13 @@
             }
             try {
                 $this->_db->beginTransaction();
-
+                //print_r($this->_querries);
                 for($i = 0; $i < sizeof($this->_querries["body"]); $i++) {
                     $query = $this->_db->prepare($this->_querries["body"][$i]);
                     $query->execute($this->_querries["args"][$i]);
                     
-                    if($query->rowCount() !== 1) {
+                    if(0 === $query->rowCount()) {
+
                         return false;
                     }
                 }
@@ -535,14 +577,17 @@
                         $this->_querries["args"][$i][":parent"] = $this->_querries["task"][$this->_querries["parent_indice"][$i]]->get_id();  
                         $this->_querries["args"][$i][":racine"] = $racine;
                     }
-                    
                     //On execute la requette
                     $query->execute($this->_querries["args"][$i]);
-                    if($i === 0) { //SI on est dans la racine
+                    if(0 === $i) { //SI on est dans la racine
                         $racine = $this->_db->lastInsertId();
                     }
                     //On sauve l'id la tache t
-                    $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());
+                    if(false === strpos("DELETE", $this->_querries["body"][$i])) {
+                        $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());
+                    }
+                    
+                    
                 }
                 //On commit
                 $result = $this->_db->commit();

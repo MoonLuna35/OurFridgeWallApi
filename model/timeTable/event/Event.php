@@ -7,7 +7,7 @@
     abstract class AbstractEvent {
         protected int $_id = -1;
         protected ?DateTime $_date_begin;
-        protected string $_label;
+        protected string $_label = "";
         protected RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly | null $_repeater = null;
         protected ?User $_user =  null;
 
@@ -33,24 +33,12 @@
             }
             
             $this->_label = $event->label; //On initialise le label
-
-            if(isset($repeater->repeat_patern) && $h < 1 ) { //si il se repete ALORS
-                //on defini les classes a instanciees
-                if ($repeater->repeat_patern === "daily") { //SI jour ALORS
-                    $this->_repeater = new RepeaterDaily($repeater);
-                }
-                else if ($repeater->repeat_patern === "weekly") { //SI semaine ALORS
-                    $this->_repeater = new RepeaterWeekly($repeater);
-                }
-                else if ($repeater->repeat_patern === "monthly") { //SI mois ALORS
-                    $this->_repeater = new RepeaterMonthly($repeater);
-                }
-                else if ($repeater->repeat_patern === "yearly") { //SI annee ALORS
-                    
-                    $this->_repeater = new RepeaterYearly($repeater);
-                }
-                //$this->$_repeater
-            }
+            if (isset($repeater->repeat_patern) && $h < 1) {
+                $this->_repeater =  EventBase::instance_repeter($repeater);
+            } 
+            
+            
+            
         }
         public function __clone() {
             foreach($this as $key => $val) {
@@ -234,6 +222,24 @@
             else
             return 0;
         }
+
+        public static function instance_repeter($repeater): RepeaterDaily|RepeaterWeekly|RepeaterMonthly|RepeaterYearly {
+            
+            //on defini les classes a instanciees
+            if ($repeater->repeat_patern === "daily") { //SI jour ALORS
+                return new RepeaterDaily($repeater);
+            }
+            else if ($repeater->repeat_patern === "weekly") { //SI semaine ALORS
+                return new RepeaterWeekly($repeater);
+            }
+            else if ($repeater->repeat_patern === "monthly") { //SI mois ALORS
+                return new RepeaterMonthly($repeater);
+            }
+            else { //SI annee ALORS
+                return new RepeaterYearly($repeater);
+            }
+        }
+        
     }
 
     class Event extends AbstractEvent {
@@ -395,10 +401,11 @@
         }
     }
 
-
+    
+    
     
     class Task extends AbstractEvent { 
-        private string $_description;
+        private string $_description = "";
         private ?Array $_children;
 
         public function __construct($event,  $user=null, $repeater=null, bool $is_leaf=false,  $h=0) { 

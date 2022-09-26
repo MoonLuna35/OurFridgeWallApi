@@ -33,38 +33,51 @@
                 repeat_n_year = :repeat_n_year
             ";
 
-            $querry_args["repeat_date_end"]=NULL;
-            $querry_args["repeat_is_for_ever"]=NULL;
-            $querry_args["repeat_n_day"]=NULL;
-            $querry_args["repeat_n_week"]=NULL;
-            $querry_args["is_repeating_monday"]=NULL;
-            $querry_args["is_repeating_tuesday"]=NULL;
-            $querry_args["is_repeating_wednesday"]=NULL;
-            $querry_args["is_repeating_thursday"]=NULL;
-            $querry_args["is_repeating_friday"]=NULL;
-            $querry_args["is_repeating_saturday"]=NULL;
-            $querry_args["is_repeating_sunday"]=NULL;
-            $querry_args["repeat_n_month"]=NULL;
-            $querry_args["repeat_days_to_repeat"]=NULL;
-            $querry_args["repeat_is_by_monthDay"]=NULL;
-            $querry_args["repeat_n_year"]=NULL;
+            $querry_args[":repeat_date_end"]=NULL;
+            $querry_args[":repeat_is_for_ever"]=NULL;
+            $querry_args[":repeat_n_day"]=NULL;
+            $querry_args[":repeat_n_week"]=NULL;
+            $querry_args[":is_repeating_monday"]=NULL;
+            $querry_args[":is_repeating_tuesday"]=NULL;
+            $querry_args[":is_repeating_wednesday"]=NULL;
+            $querry_args[":is_repeating_thursday"]=NULL;
+            $querry_args[":is_repeating_friday"]=NULL;
+            $querry_args[":is_repeating_saturday"]=NULL;
+            $querry_args[":is_repeating_sunday"]=NULL;
+            $querry_args[":repeat_n_month"]=NULL;
+            $querry_args[":repeat_days_to_repeat"]=NULL;
+            $querry_args[":repeat_is_by_monthDay"]=NULL;
+            $querry_args[":repeat_n_year"]=NULL;
 
             return [$querry_str_coll, $querry_args];
+        }
+        public static function instance_repeaterDB($repeater): RepeaterDailyDb|RepeaterWeeklyDb|RepeaterMonthlyDb|RepeaterYearlyDb {
+            if($repeater instanceof RepeaterDaily) {
+                return new RepeaterDailyDb(); 
+            }
+            else if($repeater instanceof RepeaterWeekly) {
+                return new RepeaterWeeklyDb(); 
+            }
+            else if($repeater instanceof RepeaterMonthly) {
+                return new RepeaterMonthlyDb(); 
+            }
+            else {
+                return new RepeaterYearlyDb(); 
+            }
         }
     }
 
     class RepeaterDailyDb extends AbstractRepeaterDb {
         public function update($repeater, $querry_args): array {
             if($repeater->get_for_ever()) {
-                $querry_args["repeat_is_for_ever"] = 1;
+                $querry_args[":repeat_is_for_ever"] = 1;
             }
             else {
-                $querry_args["repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
+                $querry_args[":repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
             }
-            $querry_args["repeat_n_day"] = $repeater->get_n_day();
+            $querry_args[":repeat_n_day"] = $repeater->get_n_day();
             
             return $querry_args;
-            
         }
         public function insert($repeater): array {
             $out = array();
@@ -103,13 +116,13 @@
     }
     class RepeaterWeeklyDb extends AbstractRepeaterDb {
         public function update($repeater, $querry_args): array {
-            print_r($querry_args);
+            
             if($repeater->get_for_ever()) {
                 
-                $querry_args["repeat_is_for_ever"] = 1;
+                $querry_args[":repeat_is_for_ever"] = 1;
             }
             else {
-                $querry_args["repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
+                $querry_args[":repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
             }
             $querry_args[":repeat_n_week"] = $repeater->get_n_week();
             $querry_args[":is_repeating_monday"] = $repeater->get_is_repeating_monday() ? 1 : 0;
@@ -119,7 +132,6 @@
             $querry_args[":is_repeating_friday"] = $repeater->get_is_repeating_friday() ? 1 : 0;
             $querry_args[":is_repeating_saturday"] = $repeater->get_is_repeating_saturday() ? 1 : 0;
             $querry_args[":is_repeating_sunday"] = $repeater->get_is_repeating_sunday() ? 1 : 0;
-            
             return $querry_args;
         }
         public function insert($repeater): array {
@@ -180,10 +192,10 @@
         public function update($repeater, $querry_args): array {
             
             if($repeater->get_for_ever()) {
-                $querry_args["repeat_is_for_ever"] = 1;
+                $querry_args[":repeat_is_for_ever"] = 1;
             }
             else {
-                $querry_args["repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
+                $querry_args[":repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
             }
             $querry_args[":repeat_n_month"] = $repeater->get_n_month();
             $querry_args[":repeat_days_to_repeat"] = $repeater->get_days_to_repeat();
@@ -237,10 +249,10 @@
     class RepeaterYearlyDb extends AbstractRepeaterDb {
         public function update($repeater, $querry_args): array {
             if($repeater->get_for_ever()) {
-                $querry_args["repeat_is_for_ever"] = 1;
+                $querry_args[":repeat_is_for_ever"] = 1;
             }
             else {
-                $querry_args["repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
+                $querry_args[":repeat_date_end"]=date_format($repeater->get_date_begin(), 'Y-m-d H:i:s');
             }
             $querry_args[":repeat_n_year"] = $repeater->get_n_year();
 
