@@ -1,11 +1,13 @@
 <?php
 
-require "../../init.php";
+require_once "../../init.php";
 require_once ROOT_PATH . "user/is-loged.php";
 require_once ROOT_PATH . "model/timeTable/event/Event.php";
 require_once ROOT_PATH . "model/timeTable/event/EventDb.php";
+require_once ROOT_PATH . "controlers/timeTable/event/AddObject.php";
+require_once ROOT_PATH . "controlers/timeTable/event/DeleteObject.php";
 
-class ModifyTask {
+/*class ModifyTask {
     private ?array $_task_to_edit = array();
     private ?DateTime $_new_date_begin = null;
     private mixed $_repeater = null;
@@ -46,14 +48,20 @@ class ModifyTask {
                     //On modifie les dates de debuts
                 }
             }
-            //SINON SI on modifie la structure de l'arbre de tache 
+            else {//SINON SI on modifie la structure de l'arbre de tache 
+                $del_evt = new DeleteObject($current_user); 
+                //$del_evt->delete();
+                $add_evt = new AddEvent($current_user);//On suprime l'arbre
+                //$add_evt->add();
+            }
+            
         }
         
     }
 
     public function update_attr($current_user) {
         $evtDb = new TaskDb();
-        
+
         if($evtDb->update_leafs(
             $this->_task_to_edit,
             $this->_racine_id,
@@ -70,5 +78,33 @@ class ModifyTask {
 }
 
 $modify_event = new ModifyTask($current_user);
-$modify_event->update_attr($current_user);
-//$foo = $modify_event->update();
+//$modify_event->update_attr($current_user);
+//$foo = $modify_event->update();*/
+
+abstract class abFoo {
+    protected ?string $fooAttr = "non instancie"; 
+
+    protected static function fromInsert($foo): Foo {
+        $foo->fooAttr = "instancie";
+        static::ctrl();
+        return $foo;
+    }
+    protected static function ctrl () {
+        print_r("blabla");
+    }
+}
+
+class Foo extends abFoo {
+    protected ?string $barAttr = "non instancie"; 
+    
+    public static function fromInsert($json): static {
+        $new = new static();
+        $new->barAttr = "instancie";
+        parent::fromInsert($new);
+        return $new;
+    }
+}
+
+$foo = Foo::fromInsert(1);
+print_r( $foo); 
+

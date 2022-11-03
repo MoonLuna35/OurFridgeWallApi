@@ -5,50 +5,7 @@
         protected ?bool $_for_ever; 
 		protected Event|Message|Task $_event;
         
-		abstract public function repeat(DateTime $monday, &$events): void; 
-		public function __construct($repeater) {
-			if(isset($repeater->repeat_body->date_end)) {
-				$this->_date_end = $repeater->date_end;
-			}
-			else {
-				$this->_for_ever = true;
-			}
-		}
-
-		protected function array_transform_for_construct($repeater): mixed {
-			$transformed_repeater = array();
-			
-			if(is_array($repeater)) {
-				
-				if(
-					isset($repeater["date_end"])
-					&&
-					$repeater["date_end"] instanceof DateTime
-				) {
-					$repeater["date_end"] = $repeater["date_end"]->format("Y-m-d");
-				}
-				if(
-					isset($repeater["is_for_ever"])
-					&&
-					is_int($repeater["is_for_ever"])
-				) {
-					$repeater["for_ever"] = $repeater["is_for_ever"] === 1 ? true : false;
-				}
-				foreach($repeater as $key => $value) {
-					if($key !== "for_ever" && $key !== "date_end") {
-						$repeater["repeat_body"][$key] = $value;
-						
-						unset($repeater[$key]);
-					}
-				}
-				
-				$repeater = json_encode($repeater);
-				$repeater = json_decode($repeater);
-				
-			}
-			
-			return $repeater;
-		}
+		//constructeurs
 
 		protected function controlRepeater($repeater) {
 			
@@ -164,6 +121,10 @@
                 return $repeater;
             }
         }
+
+		public static function instantiate($repeater): RepeaterDaily | RepeaterWeekly | RepeaterMonthly | RepeaterYearly{
+			
+		}
 	}
 
     class RepeaterDaily extends AbstractRepeater {

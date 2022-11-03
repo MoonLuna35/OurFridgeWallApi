@@ -47,5 +47,9 @@
         return $d && $d->format($format) === $date;
     }
 
+    class RegExp {
+        const REG_ALPHANUM_PONCT = "/^[\pL|_|-|\d| |?|.|,|:|;]{3,}$/"; 
+    }
+
    
     

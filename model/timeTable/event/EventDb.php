@@ -582,9 +582,9 @@
                     if(0 === $i) { //SI on est dans la racine
                         $racine = $this->_db->lastInsertId();
                     }
-                    //On sauve l'id la tache t
-                    if(false === strpos("DELETE", $this->_querries["body"][$i])) {
-                        $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());
+                    
+                    if(false === strpos("DELETE", $this->_querries["body"][$i])) { //SI on est pas dans la requette permettant de supprimer l'arbre de tache ALORS
+                        $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());//On sauve l'id la tache t
                     }
                     
                     
