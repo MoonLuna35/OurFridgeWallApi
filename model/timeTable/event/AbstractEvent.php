@@ -25,7 +25,7 @@
                 $evt->_user = $current_user;
             }
             if(isset($data["repeater"])) { //instanciation de repeteur
-                $evt->_repeater = RepeaterUtils::instanciate($data["repeater"]);
+                $evt->_repeater = RepeaterUtils::instantiate($data["repeater"]);
             }
             return $evt;
             
