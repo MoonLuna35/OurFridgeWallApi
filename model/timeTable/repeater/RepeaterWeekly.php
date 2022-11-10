@@ -9,24 +9,12 @@
         private bool $_is_repeating_saturday;
         private bool $_is_repeating_sunday; 
         
-		public function __construct($repeater) {
-			$repeater = $this->controlRepeater($repeater);
-			parent::__construct($repeater);
-			
-			$this->_n_week = $repeater->repeat_body->n_week;
-			$this->_is_repeating_monday = $repeater->repeat_body->is_repeating_monday;
-        	$this->_is_repeating_tuesday = $repeater->repeat_body->is_repeating_tuesday;
-        	$this->_is_repeating_wednesday = $repeater->repeat_body->is_repeating_wednesday;
-        	$this->_is_repeating_thursday = $repeater->repeat_body->is_repeating_thursday;
-        	$this->_is_repeating_friday = $repeater->repeat_body->is_repeating_friday;
-        	$this->_is_repeating_saturday = $repeater->repeat_body->is_repeating_saturday;
-        	$this->_is_repeating_sunday = $repeater->repeat_body->is_repeating_sunday;
-		}
+
 
 		public static function constructFromArray(array $data): RepeaterWeekly{
 			$body = $data["repeat_body"];
 			static::control_n_week($body["n_week"]);
-			static::control__repeater(
+			static::control_repeater(
 				$body["is_repeating_monday"],
 				$body["is_repeating_tuesday"],
 				$body["is_repeating_wednesday"],
@@ -52,7 +40,7 @@
 		}
 
 		private static function control_n_week(int $n_week) { 
-			if(0 < $n_weeky) {
+			if(0 < $n_week) {
 				return true;
 			}
 			else {

@@ -2,14 +2,6 @@
 class RepeaterYearly extends AbstractRepeater {
         private int $_n_year;
 
-		public function __construct($repeater) {
-			$repeater = $this->array_transform_for_construct($repeater);
-			$repeater = $this->controlRepeater($repeater);
-			parent::__construct($repeater);
-			$this->_n_year = $repeater->repeat_body->n_year;
-		}
-
-
 
 		public static function constructFromArray(array $data): RepeaterYearly {
 			static::control_n_year($data["repeat_body"]["n_year"]);

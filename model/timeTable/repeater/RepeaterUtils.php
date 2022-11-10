@@ -53,6 +53,9 @@
                 case "monthly": {
                     return RepeaterMonthly::constructFromArray($repeater);
                 } break;
+                case "yearly": {
+                    return RepeaterYearly::constructFromArray($repeater);
+                } break;
             }
 		}
 	}

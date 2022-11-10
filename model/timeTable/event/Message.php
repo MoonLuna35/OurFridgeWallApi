@@ -7,44 +7,37 @@
         private string $_device; 
         private string $_sentance;
         private bool $_is_ring; 
-        
-        public function __construct($event, $user=null, $repeater=null, bool $is_for_update=false) {
-            if(is_array($event)) {
-                $d = new DateTime($event["date_begin"]);
-                $event["is_ring"] = $event["is_ring"] === 1 ? true : false;
-                $event["time_begin"] = $d->format("H:i");
-                $event["date_begin"] = $d->format("Y-m-d");
 
-                $event = json_encode($event);
-                $event = json_decode($event);
-            }
-            $event = $this->controlEvent($event, $is_for_update);
-            parent::__construct($event, $user, $repeater);
-            $this->_device = $event->device; 
-            $this->_sentance = $event->sentance;
-            $this->_is_ring = $event->is_ring;
+        private static function constructor_base(array $data, User $current_user): Message {
+            $evt = new Message();
+            static::control_device($data["event"]["device"]);
+
+            $evt->_device = $data["event"]["device"];
+            $evt->_sentance = htmlentities($data["event"]["sentance"]);
+            $evt->_is_ring = $data["event"]["is_ring"];
+            
+            return $evt;
+        }
+        
+        public static function fromInsert(array $data, User $current_user): Message {
+            $evt = static::constructor_base($data, $current_user);
+            parent::fromInsertBase($data, $current_user, $evt); 
+
+            return $evt;
         }
 
-        protected function controlEvent($event, bool $for_update=false, $h=-1) {
-            $event = parent::controlEvent($event, $for_update);
-            if(
-                isset($event->device)
-                &&
-                isset($event->sentance)
-                &&
-                isset($event->is_ring)
-                &&
-                in_array($event->device, VOCAL_ASSISTANT)
-                &&
-                is_bool($event->is_ring)
-            ) {
-                $event->sentance = htmlentities($event->sentance);
-                return $event;
-            }
-            else { 
-                //print_r($event);
+        public static function fromUpdate(array $data, User $current_user): Message {
+            $evt = static::constructor_base($data, $current_user);
+            parent::fromUpdateBase($data, $current_user, $evt); 
+
+            return $evt;
+        }
+        
+        private static function control_device(string $device): bool {
+            if (!in_array($device, VOCAL_ASSISTANT)) { 
                 log400(__FILE__, __LINE__);
-            }  
+            }
+            return true;
         }
 
         public function get_device(): string  {

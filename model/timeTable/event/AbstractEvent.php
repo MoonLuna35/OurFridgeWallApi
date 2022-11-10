@@ -12,7 +12,7 @@
         //constructeurs
         
         
-        protected static function fromInsert(array $data, User $current_user, Event | Message | Task $evt =null): Event | Message | Task {
+        protected static function fromInsertBase(array $data, User $current_user, Event | Message | Task $evt =null): Event | Message | Task {
             //controles
             if(
                 static::control_date_begin($data["event"]["date_begin"])
@@ -30,9 +30,28 @@
             return $evt;
             
         }
+
+
+        protected static function fromUpdateBase(array $data, User $current_user, Event | Message | Task $evt =null): Event | Message | Task {
+            //controles
+            static::control_date_begin($data["event"]["date_begin"]);
+            static::control_label($data["event"]["label"]);
+            static::control_id($data["event"]["id"]);
+            
+            $evt->_id = $data["event"]["id"];
+            $evt->_date_begin = new DateTime();
+            $evt->_label = $data["event"]["label"];
+            $evt->_user = $current_user;
+            
+            if(isset($data["repeater"])) { //instanciation de repeteur
+                $evt->_repeater = RepeaterUtils::instantiate($data["repeater"]);
+            }
+            return $evt;
+        }
+        
         //controls
         protected static function control_id(int $id): bool {
-            if (0 > $id) {
+            if (0 < $id) {
                 return true;
             }
             else {

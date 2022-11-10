@@ -25,17 +25,6 @@
                 }            
             }
         }
-        public function control($data) {
-            if(isset($data->id) && 0 <= $data->id) {
-                return "event";
-            }
-            else if (isset($data->racine) && 0 <= $data->racine) {
-                return "task";
-            }
-            else {
-                log400(__FILE__, __LINE__);
-            }
-        }
 
         public function delete(): bool {
 

@@ -395,7 +395,9 @@
             $this->_querries["body"] = array();
             
             //attributs principaux
+            
             foreach($tasks as $task) {
+                
                 array_push($this->_querries["args"], array(
                     ":label" => $task->get_label(),
                     ":description" => $task->get_description(),

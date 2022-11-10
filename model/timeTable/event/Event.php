@@ -10,8 +10,8 @@ require_once(ROOT_PATH . "model/timeTable/event/AbstractEvent.php");
         protected string $_place;
         
         //constructeurs
-        public static function fromInsert(array $data, User $current_user, Event | Message | Task $evt =null): Event | Message | Task {
-            $evt = new Event(); 
+        private static function constructor_base(array $data, User $current_user): Event {
+            $evt = new Event();  
 
             static::control_date_end($data["event"]["date_end"]);
 
@@ -19,10 +19,22 @@ require_once(ROOT_PATH . "model/timeTable/event/AbstractEvent.php");
             $evt->_description = htmlentities($data["event"]["description"]);
             $evt->_place = htmlentities($data["event"]["place"]);
 
-            parent::fromInsert($data, $current_user, $evt); 
+            return $evt;
+        }
+
+        public static function fromInsert(array $data, User $current_user): Event {
+            $evt = static::constructor_base($data, $current_user);
+            parent::fromInsertBase($data, $current_user, $evt); 
 
             return $evt;
 
+        }
+
+        public static function fromUpdate(array $data, User $current_user): Event {
+            $evt = static::constructor_base($data, $current_user);
+            parent::fromUpdateBase($data, $current_user, $evt); 
+
+            return $evt;
         }
 
         //controleurs

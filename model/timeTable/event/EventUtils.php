@@ -35,6 +35,34 @@ class EventUtils {
             }
         }
 
+        /**
+         * 
+         * DANS CETTE METHODE : 
+         * 
+         * On determine la classe qui convient suivant le type et on la construit
+         * 
+         */
+        public static function instanciateFromUpdate(array $data, User $current_user): Event | Message | Task {
+            if(isset($data["type"])) {
+                switch ($data["type"]) {
+                    case "event": {
+                        return Event::fromUpdate($data, $current_user);
+                    }break;
+                    case "voice_reminder": {
+                        return Message::fromUpdate($data, $current_user);
+                    }break;
+                    default: {
+                        log400(__FILE__, __LINE__);
+                    }
+                }
+            }
+            else {
+                log400(__FILE__, __LINE__);
+            }
+        }
+
+        
+
         public static function event_duplicator(Event|Message|Task $event): Array {
             //Dans le cas ou un evenement commence le dimanche soir et se poursuit le lundi
             //On doit afficher la fin de l'event

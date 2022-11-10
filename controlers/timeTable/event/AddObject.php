@@ -17,6 +17,7 @@
                 
                 $request = json_decode($postdata, true);
                 $data = $request["data"];
+                
                 $this->_event = EventUtils::instanciateFromInsert($data, $current_user);
             }
         }
@@ -50,3 +51,5 @@
             return $evt_arr;
         }
     }
+
+
