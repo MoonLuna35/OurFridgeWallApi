@@ -8,7 +8,6 @@
 
         public static function fromInsert(array $data, User $current_user=null, int $h=0): Task {
             $task = new Task();
-
             if(0 === $h) {
                 parent::control_date_begin($data["event"]["date_begin"]);
                 if(isset($data["repeater"])) { //instanciation de repeteur
@@ -23,7 +22,6 @@
             $task->_description = htmlentities($data["event"]["description"]);
             $task->_user = $current_user;
             foreach ($data["event"]["children"] as $child) {
-                print_r($h);
                 array_push(
                     $task->_children,
                     static::fromInsert($child, $current_user, $h+1)

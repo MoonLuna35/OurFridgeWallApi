@@ -37,6 +37,16 @@ require_once(ROOT_PATH . "model/timeTable/event/AbstractEvent.php");
             return $evt;
         }
 
+        public static function fromDelete(int $id, User $current_user): Event {
+            parent::control_id($id); 
+
+            $evt = new Event(); 
+            $evt->_id = $id;
+            $evt->_user = $current_user; 
+            
+            return $evt; 
+        }
+
         //controleurs
         private static function control_date_end(string $date_end) {
             if(validateDateTime($date_end)) { 

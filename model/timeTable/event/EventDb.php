@@ -8,11 +8,6 @@
         protected string $_querry_str_coll = "";
         protected Event|Task|Message $_event; 
         
-        abstract public function insert($event, int $h_tree=-1);
-        abstract public function update($event, int $h_tree=-1);
-
-        
-
         protected function prepare_to_update():void {
             $this->_querry_str_coll = "
                 date_begin = :date_begin,
@@ -215,7 +210,7 @@
             
         }
 
-        public function delete_by_id(int $event): bool {
+        public function delete_by_id(Event | Task $event, bool $with_commiter=true): bool {
             $this->_querry_str = "
                 DELETE FROM  
                     timeTable_event
@@ -229,16 +224,19 @@
             ";
 
             $this->_querry_args = array(
-                ":id" => $event,
-                ":house" => $user->get_house()
+                ":id" => $event->get_id(),
+                ":house" => $event->get_user()->get_house()
             );
-            $result = $this->commiter();
-            if ($result->rowCount() > 0) {
-                return true;
+            if($with_commiter) {
+                $result = $this->commiter();
+                if ($result->rowCount() > 0) {
+                    return true;
+                }
+                else {
+                    return false;
+                }
             }
-            else {
-                return false;
-            }
+            return false; 
         }
         
 
@@ -299,6 +297,7 @@
             $this->_event->set_id($com["id"]);
             //On commit
         }
+        
         
     }
 
@@ -365,6 +364,12 @@
         private array $_querries = array();
         private int $_id_root = -1;
 
+
+        public function __construct() {
+            parent::__construct();
+            $this->_querries["args"] = array();
+            $this->_querries["body"] = array();
+        }
         /**
          * DANS LES DEUX METHODES SUIVANTES  : 
          * 
@@ -378,11 +383,10 @@
          * 
          */
 
-        public function update($event, int $h_tree = -1){
-            
-            //insert 
-            //delete
-            //commit
+        public function update(int $old_event, $event, int $h_tree = -1){
+            $this->delete($old_event, $event);//delete
+            $this->insert($event, false); //insert 
+            $this->commiter_task();//commit
         }
         public function update_leafs(
             array $tasks,
@@ -393,6 +397,8 @@
         ) {
             $this->_querries["args"] = array();
             $this->_querries["body"] = array();
+            $this->_querries["parent_indice"] = array(); //L'indice de son parent dans le tableau de requette
+            $this->_querries["task"] = array();
             
             //attributs principaux
             
@@ -463,6 +469,29 @@
             return $this->commit_leafs(true);
         }
 
+        private function delete(int $old_event, Task $event) {
+            array_push($this->_querries["args"], array(
+                ":racine" => $old_event,
+                ":house" => $event->get_user()->get_house()
+            ));
+            array_push($this->_querries["body"], 
+                "
+                    DELETE FROM  
+                        timeTable_event
+                    WHERE 
+                        (
+                        racine = :racine
+                        OR
+                        id = :racine
+                        )
+                    AND
+                        house = :house
+                "
+            );
+            $this->_querries["parent_indice"][0] = -1; //L'indice de son parent dans le tableau de requette
+            $this->_querries["task"][0] = -1;
+        }
+ 
         private function commit_leafs(int $h=0) {
             if ($h === $_ENV["MAX_TRY"]) {
                 log503(__FILE__, __LINE__);
@@ -488,15 +517,11 @@
                 $this->commit_leafs($h +1);
             }
         }
-        public function insert($event, int $h_tree=0, int $h=0, int $parent=-1) {
+        public function insert( $event, bool $is_commiter=true, int $h_tree=0,  int $h=0, int $parent=-1) {
             $this->_querry_args = array(); //Le tableau qui contiens les argument de la requette r
             
             if($h===0) { //SI on est sur la racine
                 //On initialise le tableau qui contiendra les trucs utiles
-                $this->_querries["body"] = array(); //Le corps de la requette pour chaque taches
-                $this->_querries["args"] = array(); //ses argument
-                $this->_querries["parent_indice"] = array(); //L'indice de son parent dans le tableau de requette
-                $this->_querries["task"] = array(); //Une reference vers la tache en elle meme
                 $this->_event = $event; //L'arbre entier
             }
             
@@ -549,20 +574,20 @@
             
             foreach($children as $child) { //POUR TOUT enfant FAIRE
                 $child->set_date_begin($event->get_date_begin()); //On modifie la date de la sous tache
-                $this->insert($child, $h_tree + 1, $h + 1, $indice);//On insert l'enfant. 
+                $this->insert($child, $is_commiter, $h_tree + 1, $h + 1, $indice);//On insert l'enfant. 
             }
             
 
-            if($h === 0) { //SI on est sur la racine 
-                $this->commiter_insert(); //On commit
+            if($h === 0 && $is_commiter) { //SI on est sur la racine et pas entrain de modifier l'arbre.  
+                $this->commiter_task(); //On commit
             }
             
             return $event;
             
         }
 
-        private function commiter_insert(int $h = 0): bool {
-            
+        private function commiter_task(int $h = 0): bool {
+            $i_init = 0;
             $result = false;
             if ($h === $_ENV["MAX_TRY"]) {
                 log503(__FILE__, __LINE__);
@@ -570,28 +595,28 @@
             try {
                 $racine = -1;
                 $this->_db->beginTransaction();
+                
+                if(false !== strpos($this->_querries["body"][0], "DELETE")) {
+                    $i_init = 1;
+                }
+
                 //POUR TOUTE requette r correspondant a la tache t FAIRE  
                 for($i = 0; $i < sizeof($this->_querries["args"]); $i++) {
                     //On prepare la requette
                     $query = $this->_db->prepare($this->_querries["body"][$i]);
-                    if($i > 0) { //SI on n'est pas a la racine ALORS
+                    if($i > $i_init) { //SI on n'est pas a la racine, ni sur la requette delete ALORS
                         //On prends l'id du parent
                         $this->_querries["args"][$i][":parent"] = $this->_querries["task"][$this->_querries["parent_indice"][$i]]->get_id();  
                         $this->_querries["args"][$i][":racine"] = $racine;
                     }
                     //On execute la requette
                     $query->execute($this->_querries["args"][$i]);
-                    if(0 === $i) { //SI on est dans la racine
+                    if($i_init === $i) { //SI on est dans la racine
                         $racine = $this->_db->lastInsertId();
                     }
-                    
-                    if(false === strpos("DELETE", $this->_querries["body"][$i])) { //SI on est pas dans la requette permettant de supprimer l'arbre de tache ALORS
-                        $this->_querries["task"][$i]->set_id($this->_db->lastInsertId());//On sauve l'id la tache t
-                    }
-                    
-                    
                 }
                 //On commit
+                //print_r($this->_querries);
                 $result = $this->_db->commit();
                 return true; //On renvoie la 
             }

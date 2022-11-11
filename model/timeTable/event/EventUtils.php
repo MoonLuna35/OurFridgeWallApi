@@ -23,6 +23,7 @@ class EventUtils {
                         return Message::fromInsert($data, $current_user);
                     }break;
                     case "task": {
+                        
                         return Task::fromInsert($data, $current_user);
                     }break;
                     default: {

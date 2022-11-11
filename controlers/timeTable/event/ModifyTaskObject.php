@@ -10,6 +10,8 @@
         private mixed $_repeater = null;
         private int $_racine_id;
         private ?Task $_taskTree;
+        private Task $_old_task;
+        private bool $_is_leaf = true;
     
         public function __construct($current_user) {
             $event_var; 
@@ -33,7 +35,6 @@
                 if(isset($data["modify"])){ //Si on modifie les attributs ALORS
                     
                     foreach($data["modify"] as  $info) {
-                        print_r($info);
                         if(isset($info["id"])) {
                             
                             array_push($this->_task_to_edit, Task::fromUpdate($info, $current_user));
@@ -50,10 +51,10 @@
                     }
                 }
                 else {//SINON SI on modifie la structure de l'arbre de tache 
-                    $del_evt = new DeleteObject($current_user); 
-                    //$del_evt->delete();
-                    $add_evt = new AddEvent($current_user);//On suprime l'arbre
-                    //$add_evt->add();
+                    $this->_racine_id = $data["racine"];
+                    
+                    $this->_taskTree = EventUtils::instanciateFromInsert($data, $current_user);
+                    $this->_is_leaf = false;
                 }
                 
             }
@@ -63,19 +64,32 @@
         public function update_attr($current_user) {
             
             $evtDb = new TaskDb();
-    
-            if($evtDb->update_leafs(
+            
+
+            if($this->_is_leaf && $evtDb->update_leafs(
                 $this->_task_to_edit,
                 $this->_racine_id,
                 $this->_new_date_begin,
                 $this->_repeater,
                 $current_user
             )){
-                print_r("ok");
+                return true;
+            }
+            
+            else if(
+                !$this->_is_leaf 
+                && 
+                $evtDb->update($this->_racine_id, $this->_taskTree)
+            ) {
+                return true;
             }
             else {
-                print_r("n_ok");
+                return false;
             }
+        }
+
+        public function update($current_user) {
+
         }
     }
 
